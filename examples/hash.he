@@ -1,0 +1,3 @@
+let gurgel = { "name": "Gurgel", age: 22 };
+
+gurgel['name']
