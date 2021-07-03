@@ -1,3 +1,4 @@
+#[cfg(test)]
 mod test;
 mod token;
 

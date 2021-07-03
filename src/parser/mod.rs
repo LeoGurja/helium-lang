@@ -1,4 +1,6 @@
 mod ast;
+#[cfg(test)]
+mod test;
 
 use crate::lexer::{Lexer, Token};
 use ast::Program;
