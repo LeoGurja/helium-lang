@@ -1,8 +1,4 @@
-mod lexer;
-mod parser;
-mod repl;
-
-use repl::repl;
+use helium::repl::repl;
 
 fn main() {
   repl();

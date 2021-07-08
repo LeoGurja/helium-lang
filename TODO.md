@@ -4,3 +4,4 @@ add color type
 add json parsing support
 preload functions
 escape \
+add prefix and postfix -- and ++

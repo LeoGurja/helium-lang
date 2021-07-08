@@ -1,17 +1,23 @@
-use crate::lexer::{Lexer, Token};
+use crate::parser::{Parser, ParserError};
 use std::io;
 use std::io::Write;
 
 pub fn repl() {
   print_welcome();
   loop {
-    let mut lexer = Lexer::new(ask_input(">> "));
-
-    let mut token = lexer.next_token();
-    while token != Token::Eof {
-      println!("{:?}", token);
-      token = lexer.next_token();
+    let mut parser = Parser::new(ask_input(">> "));
+    let program = parser.parse();
+    if parser.errors.len() != 0 {
+      print_errors(parser.errors);
+      continue;
     }
+    println!("{:?}", program);
+  }
+}
+
+fn print_errors(errors: Vec<ParserError>) {
+  for error in errors {
+    println!("{}", error)
   }
 }
 
