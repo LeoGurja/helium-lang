@@ -9,6 +9,7 @@ pub enum Token {
   // Identifiers + literals
   Id(String),
   Integer(String),
+  String(String),
 
   // Operators
   Assign,
@@ -74,7 +75,7 @@ impl fmt::Display for Token {
         Self::Plus => "+",
         Self::Minus => "-",
         Self::Illegal => "illegal",
-        Self::Integer(value) | Self::Id(value) => value,
+        Self::Integer(value) | Self::Id(value) | Self::String(value) => value,
         Self::NotEquals => "!=",
         Self::Semicolon => ";",
       }

@@ -1,8 +1,35 @@
 use super::parser::*;
 use crate::ast::{Block, Expression, Infix, Prefix, Statement};
+use crate::lexer::Lexer;
 
 #[test]
-fn test_infix_expressions() {
+fn escaped_string_expressions() {
+  let input = String::from(r#""leonardo \"gurgel""#);
+
+  let program = parse(input);
+
+  let expected = vec![Statement::Expression(Expression::String(String::from(
+    r#"leonardo "gurgel"#,
+  )))];
+
+  compare(program, expected)
+}
+
+#[test]
+fn string_expressions() {
+  let input = String::from("\"leonardo gurgel\"");
+
+  let program = parse(input);
+
+  let expected = vec![Statement::Expression(Expression::String(String::from(
+    "leonardo gurgel",
+  )))];
+
+  compare(program, expected)
+}
+
+#[test]
+fn infix_expressions() {
   let input = String::from(
     "
     5 + 5;
@@ -65,7 +92,7 @@ fn test_infix_expressions() {
 }
 
 #[test]
-fn test_prefix_expressions() {
+fn prefix_expressions() {
   let input = String::from(
     "!5;
   -15;",
@@ -88,7 +115,7 @@ fn test_prefix_expressions() {
 }
 
 #[test]
-fn test_return_statements() {
+fn return_statements() {
   let input = String::from(
     "return 5;
     return 10;
@@ -107,7 +134,7 @@ fn test_return_statements() {
 }
 
 #[test]
-fn test_let_statements() {
+fn let_statements() {
   let input = String::from(
     "
   let x = 5;
@@ -128,7 +155,7 @@ fn test_let_statements() {
 }
 
 #[test]
-fn test_function_declarations() {
+fn function_declarations() {
   let input = String::from(
     "fn main() {
       0
@@ -147,7 +174,7 @@ fn test_function_declarations() {
 }
 
 #[test]
-fn test_call_expressions() {
+fn call_expressions() {
   let input = String::from("add(3, 5);");
 
   let program = parse(input);
@@ -160,7 +187,7 @@ fn test_call_expressions() {
 }
 
 #[test]
-fn test_if_expressions() {
+fn if_expressions() {
   let input = String::from(
     "if x > y {
       return x;
@@ -202,12 +229,12 @@ fn test_if_expressions() {
 }
 
 #[test]
-fn test_semicolons() {
+fn semicolons() {
   compare(parse(String::from("1 + 1;")), parse(String::from("1 + 1")))
 }
 
 #[test]
-fn test_boolean_expressions() {
+fn boolean_expressions() {
   let input = String::from(
     "true;
     false;
@@ -216,16 +243,16 @@ fn test_boolean_expressions() {
   );
 
   let expected = vec![
-    Statement::Expression(Expression::Boolean(true)),
-    Statement::Expression(Expression::Boolean(false)),
-    Statement::Let(String::from("foobar"), Expression::Boolean(true)),
-    Statement::Let(String::from("barfoo"), Expression::Boolean(false)),
+    Statement::Expression(Expression::TRUE),
+    Statement::Expression(Expression::FALSE),
+    Statement::Let(String::from("foobar"), Expression::TRUE),
+    Statement::Let(String::from("barfoo"), Expression::FALSE),
   ];
   compare(parse(input), expected)
 }
 
 #[test]
-fn test_precedence() {
+fn precedence() {
   let inputs = vec![
     ("-a * b", "((-a) * b)"),
     ("!-a", "(!(-a))"),
@@ -254,7 +281,8 @@ fn test_precedence() {
 }
 
 fn parse(input: String) -> Block {
-  let mut parser = Parser::new(input);
+  let lexer = Lexer::new(input);
+  let mut parser = Parser::new(lexer);
   let program = parser.parse();
   check_errors(parser);
   program

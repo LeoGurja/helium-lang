@@ -1,17 +1,31 @@
+use crate::lexer::Lexer;
 use crate::parser::{Parser, ParserError};
+use crate::visitor::Visitor;
 use std::io;
 use std::io::Write;
 
 pub fn repl() {
   print_welcome();
+  let visitor = Visitor::new();
+  let mut parser;
+  let mut program;
+  let mut result;
+  let mut lexer;
+
   loop {
-    let mut parser = Parser::new(ask_input(">> "));
-    let program = parser.parse();
+    lexer = Lexer::new(ask_input(">> "));
+    parser = Parser::new(lexer);
+    program = parser.parse();
     if parser.errors.len() != 0 {
       print_errors(parser.errors);
       continue;
     }
     println!("{:?}", program);
+    result = visitor.visit(&program);
+    match result {
+      Ok(obj) => println!("{}", obj),
+      Err(err) => println!("{}", err),
+    }
   }
 }
 

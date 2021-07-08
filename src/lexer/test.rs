@@ -1,7 +1,37 @@
 use super::*;
 
 #[test]
-fn test_next_token_on_multichar_operators() {
+fn next_token_on_array() {
+  let input = String::from("[1, 2, 3, 'leonardo', 'gurgel']");
+
+  let expected = vec![
+    Token::LeftBracket,
+    Token::Integer(String::from("1")),
+    Token::Comma,
+    Token::Integer(String::from("2")),
+    Token::Comma,
+    Token::Integer(String::from("3")),
+    Token::Comma,
+    Token::String(String::from("leonardo")),
+    Token::Comma,
+    Token::String(String::from("gurgel")),
+    Token::RightBracket,
+  ];
+
+  compare(input, expected)
+}
+
+#[test]
+fn next_token_on_string() {
+  let input = String::from("\"leonardo gurgel\"");
+
+  let expected = vec![Token::String(String::from("leonardo gurgel"))];
+
+  compare(input, expected)
+}
+
+#[test]
+fn next_token_on_multichar_operators() {
   let input = String::from(
     "10 == 10;
       10 != 9;
@@ -25,7 +55,7 @@ fn test_next_token_on_multichar_operators() {
 }
 
 #[test]
-fn test_next_token_on_keywords() {
+fn next_token_on_keywords() {
   let input = String::from(
     "if (5 < 10) {
         return true;
@@ -59,7 +89,7 @@ fn test_next_token_on_keywords() {
 }
 
 #[test]
-fn test_next_token_on_operators() {
+fn next_token_on_operators() {
   let input = String::from(
     "!-/*5;
       5 < 10 > 5;",
@@ -85,7 +115,7 @@ fn test_next_token_on_operators() {
 }
 
 #[test]
-fn test_next_token_on_code() {
+fn next_token_on_code() {
   let input = String::from(
     "
       let five = 5;
@@ -166,7 +196,6 @@ fn compare(input: String, expected_tokens: Vec<Token>) {
 
   for expected in expected_tokens {
     let actual = lexer.next_token();
-    println!("{:?}", actual);
     assert_eq!(expected, actual);
   }
 }

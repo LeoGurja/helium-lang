@@ -1,5 +1,6 @@
 use super::block::Block;
 use super::operators::{Infix, Prefix};
+use crate::helpers::comma_separated;
 use std::fmt;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -13,6 +14,11 @@ pub enum Expression {
   Infix(Infix, Box<Expression>, Box<Expression>),
   If(Box<Expression>, Block, Option<Block>),
   Function(Option<String>, Vec<String>, Block),
+}
+
+impl Expression {
+  pub const TRUE: Expression = Expression::Boolean(true);
+  pub const FALSE: Expression = Expression::Boolean(false);
 }
 
 impl fmt::Display for Expression {
@@ -40,12 +46,4 @@ impl fmt::Display for Expression {
       }
     }
   }
-}
-
-fn comma_separated(exps: &[impl fmt::Display]) -> String {
-  exps
-    .iter()
-    .map(|a| a.to_string())
-    .collect::<Vec<String>>()
-    .join(", ")
 }

@@ -11,8 +11,7 @@ pub struct Parser {
 }
 
 impl Parser {
-  pub fn new(input: String) -> Self {
-    let mut lexer = Lexer::new(input);
+  pub fn new(mut lexer: Lexer) -> Self {
     Parser {
       current: lexer.next_token(),
       lexer,
@@ -24,7 +23,6 @@ impl Parser {
     let mut block = vec![];
 
     while self.current != Token::Eof {
-      println!("statement: {:?}", self.current);
       match self.parse_statement() {
         Ok(statement) => {
           block.push(statement);
@@ -41,7 +39,7 @@ impl Parser {
     let mut block = vec![];
 
     self.eat(Token::LeftBrace)?;
-    while self.current != Token::RightBrace {
+    while self.current != Token::RightBrace && self.current != Token::Eof {
       match self.parse_statement() {
         Ok(statement) => block.push(statement),
         Err(err) => self.errors.push(err),
@@ -73,6 +71,10 @@ impl Parser {
         let integer = value.clone();
         self.parse_integer(integer)
       }
+      Token::String(value) => {
+        let string = value.clone();
+        self.parse_string(&string)
+      }
       Token::True | Token::False => self.parse_boolean(),
       Token::Bang | Token::Minus => self.parse_prefix_expression(),
       Token::LeftParen => self.parse_grouped_expression(),
@@ -80,7 +82,10 @@ impl Parser {
       // Token::LeftBracket => Some(Parser::parse_array_literal),
       // Token::LeftBrace => Some(Parser::parse_hash_literal),
       Token::Function => self.parse_function(),
-      _ => Err(ParserError::ExpectedExpression(self.current.clone())),
+      _ => {
+        self.advance();
+        Err(ParserError::ExpectedExpression(self.current.clone()))
+      }
     };
 
     let mut operator = Infix::from(&self.current);
@@ -149,7 +154,11 @@ impl Parser {
   }
 
   fn parse_boolean(&mut self) -> Result<Expression> {
-    let expression = Expression::Boolean(self.current == Token::True);
+    let expression = if self.current == Token::True {
+      Expression::TRUE
+    } else {
+      Expression::FALSE
+    };
     self.advance();
     Ok(expression)
   }
@@ -159,6 +168,11 @@ impl Parser {
     let left = self.parse_expression(Precedence::Lowest);
     self.eat(Token::RightParen)?;
     left
+  }
+
+  fn parse_string(&mut self, value: &String) -> Result<Expression> {
+    self.advance();
+    Ok(Expression::String(value.clone()))
   }
 
   fn parse_id(&mut self, id: String) -> Result<Expression> {

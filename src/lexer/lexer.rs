@@ -35,6 +35,7 @@ impl Lexer {
           Token::Assign
         }
       }
+      '"' | '\'' => self.collect_string(),
       ';' => Token::Semicolon,
       '(' => Token::LeftParen,
       ')' => Token::RightParen,
@@ -70,6 +71,32 @@ impl Lexer {
     };
     self.advance();
     token
+  }
+
+  fn collect_string(&mut self) -> Token {
+    let opening_quote = self.current;
+    let mut is_escaped = false;
+    self.advance();
+
+    let start_position = self.position;
+    while self.current != opening_quote || is_escaped {
+      is_escaped = self.current == '\\';
+      self.advance();
+      if self.current == '\0' {
+        return Token::Illegal;
+      }
+    }
+
+    let end_position = self.position;
+
+    Token::String(
+      self.input[start_position..end_position]
+        .replace(
+          &format!("\\{}", opening_quote),
+          &format!("{}", opening_quote),
+        )
+        .to_owned(),
+    )
   }
 
   fn collect_id(&mut self) -> Token {
