@@ -15,11 +15,19 @@ pub enum EvalError {
   WrongParameters(usize, usize),
   CallError(String),
   TypeError(String, Object),
+  IndexError(Object, Object),
 }
 
 impl fmt::Display for EvalError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
+      Self::IndexError(obj, indexer) => {
+        write!(
+          f,
+          "IndexError:\n\t{} cannot be acessed by indexed by {}",
+          obj, indexer
+        )
+      }
       Self::TypeError(expected, got) => {
         write!(
           f,

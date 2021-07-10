@@ -72,14 +72,8 @@ impl Parser {
   fn parse_expression(&self, precedence: Precedence) -> Result<Expression> {
     let current = self.next();
     let mut left = match current {
-      Token::Id(value) => {
-        let id = value.clone();
-        self.parse_id(id)
-      }
-      Token::Integer(value) => {
-        let integer = value.clone();
-        self.parse_integer(integer)
-      }
+      Token::Id(value) => self.parse_id(value),
+      Token::Integer(value) => self.parse_integer(value),
       Token::String(value) => Ok(Expression::String(value)),
       Token::True => Ok(Expression::TRUE),
       Token::False => Ok(Expression::FALSE),
@@ -92,19 +86,42 @@ impl Parser {
       // Token::LeftBrace => Some(Parser::parse_hash_literal),
       Token::Function => self.parse_function(),
       _ => Err(ParserError::ExpectedExpression(current)),
-    };
+    }?;
 
     let mut operator = Infix::from(self.peek());
     while precedence < operator.0 {
       self.next();
-      if let Some(infix) = operator.1 {
-        left = self.parse_infix_expression(left?, infix, operator.0);
-        operator = Infix::from(self.peek());
-      } else {
-        return left;
-      }
+      left = match operator.1 {
+        Some(Infix::Index) => self.parse_index_expression(left)?,
+        Some(infix) => self.parse_infix_expression(infix, left, operator.0)?,
+        _ => break,
+      };
+      operator = Infix::from(self.peek());
     }
-    left
+    Ok(left)
+  }
+
+  fn parse_infix_expression(
+    &self,
+    infix: Infix,
+    left: Expression,
+    precedence: Precedence,
+  ) -> Result<Expression> {
+    Ok(Expression::Infix(
+      infix,
+      Box::new(left),
+      Box::new(self.parse_expression(precedence)?),
+    ))
+  }
+
+  fn parse_index_expression(&self, left: Expression) -> Result<Expression> {
+    let right = self.parse_expression(Precedence::Lowest)?;
+    self.eat(Token::RightBracket)?;
+    Ok(Expression::Infix(
+      Infix::Index,
+      Box::new(left),
+      Box::new(right),
+    ))
   }
 
   fn parse_function(&self) -> Result<Expression> {
@@ -195,19 +212,6 @@ impl Parser {
       Ok(value) => Ok(Expression::Integer(value)),
       Err(_) => Err(ParserError::ParsingError(String::from("integer"), integer)),
     }
-  }
-
-  fn parse_infix_expression(
-    &self,
-    left: Expression,
-    infix: Infix,
-    precedence: Precedence,
-  ) -> Result<Expression> {
-    Ok(Expression::Infix(
-      infix,
-      Box::new(left),
-      Box::new(self.parse_expression(precedence)?),
-    ))
   }
 
   fn parse_prefix_expression(&self, prefix_token: Token) -> Result<Expression> {

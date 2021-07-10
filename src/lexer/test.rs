@@ -1,7 +1,30 @@
 use super::*;
 
 #[test]
-fn next_token_on_array() {
+fn array_indexes() {
+  let input = String::from("[1,2,3,4][0]");
+
+  let expected = vec![
+    Token::LeftBracket,
+    Token::Integer(String::from("1")),
+    Token::Comma,
+    Token::Integer(String::from("2")),
+    Token::Comma,
+    Token::Integer(String::from("3")),
+    Token::Comma,
+    Token::Integer(String::from("4")),
+    Token::RightBracket,
+    Token::LeftBracket,
+    Token::Integer(String::from("0")),
+    Token::RightBracket,
+    Token::Eof,
+  ];
+
+  compare(input, expected)
+}
+
+#[test]
+fn array() {
   let input = String::from("[1, 2, 3, 'leonardo', 'gurgel']");
 
   let expected = vec![
@@ -22,7 +45,7 @@ fn next_token_on_array() {
 }
 
 #[test]
-fn next_token_on_string() {
+fn string() {
   let input = String::from("\"leonardo gurgel\"");
 
   let expected = vec![Token::String(String::from("leonardo gurgel"))];
@@ -31,7 +54,7 @@ fn next_token_on_string() {
 }
 
 #[test]
-fn next_token_on_multichar_operators() {
+fn multichar_operators() {
   let input = String::from(
     "10 == 10;
       10 != 9;
@@ -55,7 +78,7 @@ fn next_token_on_multichar_operators() {
 }
 
 #[test]
-fn next_token_on_keywords() {
+fn keywords() {
   let input = String::from(
     "if (5 < 10) {
         return true;
@@ -89,7 +112,7 @@ fn next_token_on_keywords() {
 }
 
 #[test]
-fn next_token_on_operators() {
+fn operators() {
   let input = String::from(
     "!-/*5;
       5 < 10 > 5;",
@@ -115,7 +138,7 @@ fn next_token_on_operators() {
 }
 
 #[test]
-fn next_token_on_code() {
+fn code() {
   let input = String::from(
     "
       let five = 5;
@@ -173,7 +196,7 @@ fn next_token_on_code() {
 }
 
 #[test]
-fn lexer_next_token_on_symbols() {
+fn symbols() {
   let input = String::from("=+(){},;");
 
   let expected_tokens = vec![

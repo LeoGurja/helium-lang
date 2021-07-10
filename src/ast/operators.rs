@@ -41,11 +41,13 @@ pub enum Infix {
   Minus,
   Asterisk,
   Slash,
+  Index,
 }
 
 impl fmt::Display for Infix {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
+      Infix::Index => write!(f, "[..]"),
       Infix::Equals => write!(f, "=="),
       Infix::NotEquals => write!(f, "!="),
       Infix::LessThan => write!(f, "<"),
@@ -80,7 +82,7 @@ impl Infix {
       Token::Slash => (Precedence::Product, Some(Infix::Slash)),
       Token::Asterisk => (Precedence::Product, Some(Infix::Asterisk)),
       Token::LeftParen => (Precedence::Call, None),
-      Token::LeftBracket => (Precedence::Index, None),
+      Token::LeftBracket => (Precedence::Index, Some(Infix::Index)),
       _ => (Precedence::Lowest, None),
     }
   }

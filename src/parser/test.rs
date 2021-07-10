@@ -3,6 +3,25 @@ use crate::ast::{Block, Expression, Infix, Prefix, Statement};
 use crate::lexer::Lexer;
 
 #[test]
+fn array_expressions() {
+  let input = String::from("myArray[1 + 1]");
+
+  let program = parse(input);
+
+  let expected = vec![Statement::Expression(Expression::Infix(
+    Infix::Index,
+    Box::new(Expression::Id(String::from("myArray"))),
+    Box::new(Expression::Infix(
+      Infix::Plus,
+      Box::new(Expression::Integer(1)),
+      Box::new(Expression::Integer(1)),
+    )),
+  ))];
+
+  compare(program, expected)
+}
+
+#[test]
 fn escaped_string_expressions() {
   let input = String::from(r#""leonardo \"gurgel""#);
 

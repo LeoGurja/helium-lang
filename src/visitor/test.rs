@@ -3,6 +3,40 @@ use crate::ast::{Block, Expression, Infix, Prefix, Statement};
 use crate::object::Object;
 
 #[test]
+fn visit_out_of_bounds_index() {
+  let input = vec![Statement::Expression(Expression::Infix(
+    Infix::Index,
+    Box::new(Expression::Array(vec![
+      Expression::Integer(1),
+      Expression::Integer(2),
+      Expression::Integer(3),
+    ])),
+    Box::new(Expression::Integer(4)),
+  ))];
+
+  let result = visit(input);
+
+  assert_eq!(result, Object::Null)
+}
+
+#[test]
+fn visit_array_index() {
+  let input = vec![Statement::Expression(Expression::Infix(
+    Infix::Index,
+    Box::new(Expression::Array(vec![
+      Expression::Integer(1),
+      Expression::Integer(2),
+      Expression::Integer(3),
+    ])),
+    Box::new(Expression::Integer(1)),
+  ))];
+
+  let result = visit(input);
+
+  assert_eq!(result, Object::Integer(2))
+}
+
+#[test]
 fn visit_array() {
   let input = vec![Statement::Expression(Expression::Array(vec![
     Expression::String(String::from("x")),

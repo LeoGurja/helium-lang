@@ -165,6 +165,7 @@ impl Visitor {
   ) -> Result {
     let left = self.visit_expression(left_expression)?;
     match infix {
+      Infix::Index => self.visit_index(left, self.visit_expression(right_expression)?),
       Infix::Plus => left.add(self.visit_expression(right_expression)?),
       Infix::Asterisk => left.multiply(self.visit_expression(right_expression)?),
       Infix::Equals => Ok(if left == self.visit_expression(right_expression)? {
@@ -181,6 +182,15 @@ impl Visitor {
       Infix::LessThan => left.less_than(self.visit_expression(right_expression)?),
       Infix::Minus => left.subtract(self.visit_expression(right_expression)?),
       Infix::Slash => left.divide(self.visit_expression(right_expression)?),
+    }
+  }
+
+  fn visit_index(&self, array_obj: Object, index_obj: Object) -> Result {
+    match (&array_obj, &index_obj) {
+      (Object::Array(array), Object::Integer(index)) => {
+        Ok(array.get(*index as usize).unwrap_or(&Object::Null).clone())
+      }
+      _ => Err(EvalError::IndexError(array_obj, index_obj)),
     }
   }
 

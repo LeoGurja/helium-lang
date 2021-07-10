@@ -43,7 +43,11 @@ impl fmt::Display for Expression {
       Expression::Boolean(value) => write!(f, "{}", value),
       Expression::Prefix(operator, exp) => write!(f, "({}{})", operator, exp),
       Expression::Infix(operator, left, right) => {
-        write!(f, "({} {} {})", left, operator, right)
+        if &Infix::Index == operator {
+          write!(f, "({}[{}])", left, right)
+        } else {
+          write!(f, "({} {} {})", left, operator, right)
+        }
       }
       Expression::If(condition, ..) => {
         write!(f, "if({})", condition)
