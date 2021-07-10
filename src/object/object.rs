@@ -5,6 +5,7 @@ use std::fmt;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Object {
+  Array(Vec<Object>),
   Integer(i64),
   String(String),
   Boolean(bool),
@@ -32,6 +33,7 @@ impl Object {
       Self::Return(obj) => obj.as_string(),
       Self::Function(args, ..) => format!("fn({})", comma_separated(args)),
       Self::BuiltIn(..) => format!("builtin fn()"),
+      Self::Array(array) => format!("[{}]", comma_separated(array)),
       Self::Null => String::from("null"),
     }
   }

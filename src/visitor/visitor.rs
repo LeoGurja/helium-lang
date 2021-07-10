@@ -30,6 +30,7 @@ impl Visitor {
 
   fn visit_statement(&self, statement: &Statement) -> Result {
     match statement {
+      Statement::Null => unreachable!(),
       Statement::Expression(expression) => self.visit_expression(expression),
       Statement::Let(name, expression) => self.visit_variable_declaration(name, expression),
       Statement::Return(expression) => self.visit_return(expression),
@@ -51,6 +52,7 @@ impl Visitor {
 
   fn visit_expression(&self, expression: &Expression) -> Result {
     Ok(match &expression {
+      Expression::Array(expressions) => Object::Array(self.visit_expressions(expressions)?),
       Expression::Boolean(value) => {
         if *value {
           Object::TRUE

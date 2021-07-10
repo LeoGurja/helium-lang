@@ -3,6 +3,20 @@ use crate::ast::{Block, Expression, Infix, Prefix, Statement};
 use crate::object::Object;
 
 #[test]
+fn visit_array() {
+  let input = vec![Statement::Expression(Expression::Array(vec![
+    Expression::String(String::from("x")),
+    Expression::Integer(1),
+  ]))];
+
+  let result = visit(input);
+  assert_eq!(
+    result,
+    Object::Array(vec![Object::String(String::from("x")), Object::Integer(1)])
+  )
+}
+
+#[test]
 fn visit_builtin_len() {
   let input = vec![Statement::Expression(Expression::Call(
     String::from("len"),
