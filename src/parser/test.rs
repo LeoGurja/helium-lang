@@ -281,8 +281,7 @@ fn precedence() {
 }
 
 fn parse(input: String) -> Block {
-  let lexer = Lexer::new(input);
-  let mut parser = Parser::new(lexer);
+  let parser = Parser::new(Lexer::new(input));
   let program = parser.parse();
   check_errors(parser);
   program
@@ -295,11 +294,8 @@ fn compare(program: Block, expected: Vec<Statement>) {
 }
 
 fn check_errors(parser: Parser) {
-  if parser.errors.len() > 0 {
-    panic!(
-      "Parser has {} errors: {:?}",
-      parser.errors.len(),
-      parser.errors
-    );
+  let errors = parser.errors.borrow();
+  if errors.len() > 0 {
+    panic!("Parser has {} errors: {:?}", errors.len(), errors);
   }
 }

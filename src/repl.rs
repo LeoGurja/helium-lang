@@ -1,6 +1,7 @@
 use crate::lexer::Lexer;
 use crate::parser::{Parser, ParserError};
 use crate::visitor::Visitor;
+use std::cell::Ref;
 use std::io;
 use std::io::Write;
 
@@ -10,14 +11,13 @@ pub fn repl() {
   let mut parser;
   let mut program;
   let mut result;
-  let mut lexer;
 
   loop {
-    lexer = Lexer::new(ask_input(">> "));
-    parser = Parser::new(lexer);
+    parser = Parser::new(Lexer::new(ask_input(">> ")));
     program = parser.parse();
-    if parser.errors.len() != 0 {
-      print_errors(parser.errors);
+    let errors = parser.errors.borrow();
+    if errors.len() != 0 {
+      print_errors(errors);
       continue;
     }
     println!("{:?}", program);
@@ -29,8 +29,8 @@ pub fn repl() {
   }
 }
 
-fn print_errors(errors: Vec<ParserError>) {
-  for error in errors {
+fn print_errors(errors: Ref<'_, Vec<ParserError>>) {
+  for error in errors.iter() {
     println!("{}", error)
   }
 }

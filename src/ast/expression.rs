@@ -14,6 +14,7 @@ pub enum Expression {
   Infix(Infix, Box<Expression>, Box<Expression>),
   If(Box<Expression>, Block, Option<Block>),
   Function(Option<String>, Vec<String>, Block),
+  Array(Vec<Expression>),
 }
 
 impl Expression {
@@ -24,6 +25,9 @@ impl Expression {
 impl fmt::Display for Expression {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
+      Expression::Array(values) => {
+        write!(f, "[{}]", comma_separated(values))
+      }
       Expression::Call(function, arguments) => {
         write!(f, "{}({})", function, comma_separated(arguments))
       }

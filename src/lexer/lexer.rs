@@ -1,32 +1,34 @@
 use super::token::Token;
+use std::cell::{Cell, RefCell};
 use std::iter::Peekable;
 use std::mem;
 use std::str::Chars;
 
 pub struct Lexer {
   input: String,
-  position: usize,
-  current: char,
-  chars: Peekable<Chars<'static>>,
+  position: Cell<usize>,
+  current: Cell<char>,
+  chars: RefCell<Peekable<Chars<'static>>>,
 }
 
 impl Lexer {
   pub fn new(input: String) -> Self {
-    let chars = unsafe { mem::transmute(input.chars().peekable()) };
-    let mut lexer = Lexer {
+    let chars = RefCell::new(unsafe { mem::transmute(input.chars().peekable()) });
+    let lexer = Lexer {
       input,
-      position: 0,
-      current: '\0',
+      position: Cell::new(0),
+      current: Cell::new('\0'),
       chars,
     };
     lexer.advance();
     lexer
   }
 
-  pub fn next_token(&mut self) -> Token {
+  pub fn next_token(&self) -> Token {
     self.skip_whitespace();
+    let current = self.current.get();
 
-    let token = match self.current {
+    let token = match current {
       '=' => {
         if self.peek() == '=' {
           self.advance();
@@ -60,9 +62,9 @@ impl Lexer {
       '>' => Token::GreaterThan,
       '\0' => Token::Eof,
       _ => {
-        if self.current.is_alphabetic() || self.current == '_' {
+        if current.is_alphabetic() || current == '_' {
           return self.collect_id();
-        } else if self.current.is_numeric() {
+        } else if current.is_numeric() {
           return self.collect_number();
         } else {
           Token::Illegal
@@ -73,21 +75,22 @@ impl Lexer {
     token
   }
 
-  fn collect_string(&mut self) -> Token {
-    let opening_quote = self.current;
-    let mut is_escaped = false;
+  fn collect_string(&self) -> Token {
+    let opening_quote = self.current.get();
     self.advance();
-
-    let start_position = self.position;
-    while self.current != opening_quote || is_escaped {
-      is_escaped = self.current == '\\';
+    let start_position = self.position.get();
+    let mut is_escaped = false;
+    let mut current = self.current.get();
+    while current != opening_quote || is_escaped {
+      is_escaped = current == '\\';
       self.advance();
-      if self.current == '\0' {
+      current = self.current.get();
+      if current == '\0' {
         return Token::Illegal;
       }
     }
 
-    let end_position = self.position;
+    let end_position = self.position.get();
 
     Token::String(
       self.input[start_position..end_position]
@@ -99,42 +102,50 @@ impl Lexer {
     )
   }
 
-  fn collect_id(&mut self) -> Token {
-    let start_position = self.position;
-
-    while self.current.is_alphabetic() || self.current == '_' {
+  fn collect_id(&self) -> Token {
+    let start_position = self.position.get();
+    let mut current = self.current.get();
+    while current.is_alphabetic() || current == '_' {
       self.advance();
+      current = self.current.get();
     }
 
-    Token::lookup_id(&self.input[start_position..self.position])
+    Token::lookup_id(&self.input[start_position..self.position.get()])
   }
 
-  fn collect_number(&mut self) -> Token {
-    let start_position = self.position;
-
-    while self.current.is_numeric() {
+  fn collect_number(&self) -> Token {
+    let start_position = self.position.get();
+    let mut current = self.current.get();
+    while current.is_numeric() {
       self.advance();
+      current = self.current.get();
     }
 
-    Token::Integer(self.input[start_position..self.position].to_owned())
+    Token::Integer(self.input[start_position..self.position.get()].to_owned())
   }
 
-  fn advance(&mut self) {
-    self.position += if self.current == '\0' {
-      0
-    } else {
-      self.current.len_utf8()
-    };
-    self.current = self.chars.next().unwrap_or('\0');
+  fn advance(&self) {
+    let current = self.current.get();
+    self.position.set(
+      self.position.get()
+        + if current == '\0' {
+          0
+        } else {
+          current.len_utf8()
+        },
+    );
+    self
+      .current
+      .set(self.chars.borrow_mut().next().unwrap_or('\0'));
   }
 
-  fn skip_whitespace(&mut self) {
-    while self.current.is_whitespace() {
+  fn skip_whitespace(&self) {
+    while self.current.get().is_whitespace() {
       self.advance();
     }
   }
 
-  fn peek(&mut self) -> char {
-    self.chars.peek().cloned().unwrap_or('\0')
+  fn peek(&self) -> char {
+    self.chars.borrow_mut().peek().cloned().unwrap_or('\0')
   }
 }

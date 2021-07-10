@@ -44,6 +44,12 @@ pub enum Token {
   Return,
 }
 
+impl std::default::Default for Token {
+  fn default() -> Self {
+    Token::Eof
+  }
+}
+
 impl fmt::Display for Token {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     write!(

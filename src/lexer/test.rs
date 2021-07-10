@@ -192,7 +192,7 @@ fn lexer_next_token_on_symbols() {
 }
 
 fn compare(input: String, expected_tokens: Vec<Token>) {
-  let mut lexer = Lexer::new(input);
+  let lexer = Lexer::new(input);
 
   for expected in expected_tokens {
     let actual = lexer.next_token();

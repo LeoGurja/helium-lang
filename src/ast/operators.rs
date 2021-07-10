@@ -59,7 +59,7 @@ impl fmt::Display for Infix {
 }
 
 impl Prefix {
-  pub fn from(token: &Token) -> Result<Prefix> {
+  pub fn from(token: Token) -> Result<Prefix> {
     match token {
       Token::Bang => Ok(Prefix::Bang),
       Token::Minus => Ok(Prefix::Minus),
@@ -69,7 +69,7 @@ impl Prefix {
 }
 
 impl Infix {
-  pub fn from(token: &Token) -> (Precedence, Option<Infix>) {
+  pub fn from(token: Token) -> (Precedence, Option<Infix>) {
     match token {
       Token::Equals => (Precedence::Equals, Some(Infix::Equals)),
       Token::NotEquals => (Precedence::Equals, Some(Infix::NotEquals)),
