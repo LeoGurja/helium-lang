@@ -8,6 +8,6 @@ pub fn first(args: Vec<Object>) -> Result {
   Ok(match args.get(0).unwrap() {
     Object::String(string) => Object::String(string.chars().nth(0).unwrap_or('\0').to_string()),
     Object::Array(array) => array.get(0).unwrap_or(&Object::Null).clone(),
-    _ => return Err(type_error("string", args.get(0).unwrap())),
+    _ => return Err(type_error("array or string", args.get(0).unwrap())),
   })
 }

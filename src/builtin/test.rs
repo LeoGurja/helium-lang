@@ -1,7 +1,31 @@
 use crate::lexer::Lexer;
 use crate::object::Object;
 use crate::parser::Parser;
-use crate::visitor::{EvalError, Visitor};
+use crate::visitor::Visitor;
+
+#[test]
+fn array_push() {
+  let input = String::from("push([1,2,3,4], 5)");
+  assert_eq!(
+    visit(input),
+    Object::Array(vec![
+      Object::Integer(1),
+      Object::Integer(2),
+      Object::Integer(3),
+      Object::Integer(4),
+      Object::Integer(5)
+    ])
+  )
+}
+
+#[test]
+fn string_push() {
+  let input = String::from("push('leonardo', ' gurgel')");
+  assert_eq!(
+    visit(input),
+    Object::String(String::from("leonardo gurgel"))
+  )
+}
 
 #[test]
 fn array_len() {

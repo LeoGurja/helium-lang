@@ -8,6 +8,6 @@ pub fn len(args: Vec<Object>) -> Result {
   Ok(match args.get(0).unwrap() {
     Object::String(string) => Object::Integer(string.len() as i64),
     Object::Array(array) => Object::Integer(array.len() as i64),
-    _ => return Err(type_error("string", args.get(0).unwrap())),
+    _ => return Err(type_error("array or string", args.get(0).unwrap())),
   })
 }

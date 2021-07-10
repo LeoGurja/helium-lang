@@ -51,18 +51,6 @@ fn visit_array() {
 }
 
 #[test]
-fn visit_builtin_len() {
-  let input = vec![Statement::Expression(Expression::Call(
-    String::from("len"),
-    vec![Expression::String(String::from("hello world"))],
-  ))];
-
-  let result = visit(input);
-
-  assert_eq!(result, Object::Integer(11))
-}
-
-#[test]
 fn visit_string_concat() {
   let input = vec![Statement::Expression(Expression::Infix(
     Infix::Plus,
