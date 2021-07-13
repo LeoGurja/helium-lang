@@ -3,11 +3,14 @@ use crate::env::Env;
 use crate::errors::EvalError;
 use crate::object::{Object, Type};
 use crate::token::Operator;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
 
 pub type Result = std::result::Result<Object, EvalError>;
 
 pub struct Visitor {
-  pub env: Env,
+  pub env: Rc<RefCell<Env>>,
 }
 
 impl Visitor {
@@ -15,7 +18,7 @@ impl Visitor {
     Visitor { env: Env::global() }
   }
 
-  pub fn from(env: Env) -> Self {
+  pub fn from(env: Rc<RefCell<Env>>) -> Self {
     Visitor { env }
   }
 
@@ -44,7 +47,7 @@ impl Visitor {
   }
 
   fn visit_block(&self, block: &Vec<Statement>) -> Result {
-    let sub_visitor = Visitor::from(Env::local(&self.env));
+    let sub_visitor = Visitor::from(Env::local(self.env.clone()));
     sub_visitor.visit(block)
   }
 
@@ -53,7 +56,7 @@ impl Visitor {
     let mut evaluated = Object::NULL;
     if let Type::Array(arr) = array.content {
       for i in arr {
-        self.env.set(variable, i);
+        self.env.borrow_mut().set(variable, i);
         evaluated = self.visit_statement(block)?;
       }
       Ok(evaluated)
@@ -72,7 +75,7 @@ impl Visitor {
 
   fn visit_variable_declaration(&self, name: &String, expression: &Expression) -> Result {
     let value = self.visit_expression(expression)?;
-    self.env.set(&name, value);
+    self.env.borrow_mut().set(&name, value);
     Ok(Object::NULL)
   }
 
@@ -85,6 +88,7 @@ impl Visitor {
 
   fn visit_expression(&self, expression: &Expression) -> Result {
     Ok(match &expression {
+      Expression::Hash(hash) => self.visit_hash(hash)?,
       Expression::Index(indexed, indexer) => self.visit_index(
         self.visit_expression(indexed)?,
         self.visit_expression(indexer)?,
@@ -112,6 +116,21 @@ impl Visitor {
       Expression::Prefix(prefix, expression) => self.visit_prefix(prefix, expression)?,
       Expression::String(value) => Object::new(Type::String(value.clone())),
     })
+  }
+
+  fn visit_hash(&self, key_values: &Vec<(Expression, Expression)>) -> Result {
+    let mut hash = HashMap::new();
+    for (key_expression, value_expression) in key_values {
+      let key = match self.visit_expression(&key_expression)?.content {
+        Type::Boolean(b) => b.to_string(),
+        Type::Integer(i) => i.to_string(),
+        Type::String(s) => s,
+        obj => return Err(EvalError::UnsupportedHashKey(obj)),
+      };
+      hash.insert(key, self.visit_expression(&value_expression)?);
+    }
+
+    Ok(Object::new(Type::Hash(hash)))
   }
 
   fn visit_call(&self, function: &Expression, arg_values: &Vec<Expression>) -> Result {
@@ -143,7 +162,7 @@ impl Visitor {
     arg_names: &Vec<String>,
     arg_values: &Vec<Object>,
     block: &Statement,
-    env: Env,
+    env: Rc<RefCell<Env>>,
   ) -> Result {
     if arg_names.len() != arg_values.len() {
       return Err(EvalError::WrongParameters(
@@ -151,9 +170,11 @@ impl Visitor {
         arg_values.len(),
       ));
     }
-    let child_env = Env::local(&env);
+    let child_env = Env::local(env);
     for i in 0..arg_names.len() {
-      child_env.set(&arg_names[i], arg_values[i].clone())
+      child_env
+        .borrow_mut()
+        .set(&arg_names[i], arg_values[i].clone())
     }
     let sub_visitor = Visitor::from(child_env);
     sub_visitor.visit_statement(block)
@@ -171,7 +192,7 @@ impl Visitor {
       self.env.clone(),
     ));
     match name {
-      Some(value) => self.env.set(&value, function.clone()),
+      Some(value) => self.env.borrow_mut().set(&value, function.clone()),
       None => (),
     };
 
@@ -179,7 +200,7 @@ impl Visitor {
   }
 
   fn visit_variable(&self, name: &str) -> Result {
-    match self.env.get(name) {
+    match self.env.borrow().get(name) {
       Some(value) => Ok(value),
       None => Err(EvalError::UndefinedVariable(name.to_string())),
     }
@@ -207,12 +228,16 @@ impl Visitor {
     left_expression: &Expression,
     right_expression: &Expression,
   ) -> Result {
-    let mut left = self.visit_expression(left_expression)?;
+    let left = self.visit_expression(left_expression)?;
     match infix {
-      Operator::Assign => {
-        left.content = self.visit_expression(right_expression)?.content;
-        Ok(left.clone())
-      }
+      Operator::Assign => match left_expression {
+        Expression::Id(id) => {
+          let value = self.visit_expression(right_expression)?;
+          self.env.borrow_mut().update(id, value.clone())?;
+          Ok(value)
+        }
+        _ => Err(EvalError::CannotAssign(left)),
+      },
       Operator::Plus => left.add(self.visit_expression(right_expression)?),
       Operator::Asterisk => left.multiply(self.visit_expression(right_expression)?),
       Operator::Equals => Ok(if left == self.visit_expression(right_expression)? {
@@ -235,6 +260,10 @@ impl Visitor {
 
   fn visit_index(&self, array_obj: Object, index_obj: Object) -> Result {
     match (&array_obj.content, &index_obj.content) {
+      (Type::Hash(hash), index) => Ok(match hash.get(&index.to_string()) {
+        Some(obj) => obj.clone(),
+        None => Object::NULL,
+      }),
       (Type::Array(array), Type::Integer(index)) => Ok(match array.get(*index as usize) {
         Some(obj) => obj.clone(),
         None => Object::NULL,

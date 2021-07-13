@@ -2,6 +2,48 @@ use super::*;
 use crate::token::{Operator, Token};
 
 #[test]
+fn hash_indexes() {
+  let input = String::from("hash['leonardo']");
+
+  let expected = vec![
+    Token::Id(String::from("hash")),
+    Token::LeftBracket,
+    Token::String(String::from("leonardo")),
+    Token::RightBracket,
+    Token::Eof,
+  ];
+
+  compare(input, expected)
+}
+
+#[test]
+fn hashes() {
+  let input = String::from("let x = {'name': 'leonardo', 'last_name': 'ferreira', 1: 1}");
+
+  let expected = vec![
+    Token::Let,
+    Token::Id(String::from("x")),
+    Token::Operator(Operator::Assign),
+    Token::LeftBrace,
+    Token::String(String::from("name")),
+    Token::Colon,
+    Token::String(String::from("leonardo")),
+    Token::Comma,
+    Token::String(String::from("last_name")),
+    Token::Colon,
+    Token::String(String::from("ferreira")),
+    Token::Comma,
+    Token::Integer(String::from("1")),
+    Token::Colon,
+    Token::Integer(String::from("1")),
+    Token::RightBrace,
+    Token::Eof,
+  ];
+
+  compare(input, expected)
+}
+
+#[test]
 fn while_loops() {
   let input = String::from("let x = 0; while x < 10 { x = x + 1 }");
 
@@ -96,6 +138,7 @@ fn array() {
     Token::Comma,
     Token::String(String::from("gurgel")),
     Token::RightBracket,
+    Token::Eof,
   ];
 
   compare(input, expected)

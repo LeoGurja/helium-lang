@@ -15,6 +15,7 @@ pub enum Expression {
   If(Box<Expression>, Box<Statement>, Option<Box<Statement>>),
   Function(Option<String>, Vec<String>, Box<Statement>),
   Array(Vec<Expression>),
+  Hash(Vec<(Expression, Expression)>),
   Index(Box<Expression>, Box<Expression>),
 }
 
@@ -26,6 +27,9 @@ impl Expression {
 impl fmt::Display for Expression {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
+      Expression::Hash(hash) => {
+        write!(f, "{:?}", hash)
+      }
       Expression::Index(indexed, indexer) => {
         write!(f, "{}[{}]", indexed, indexer)
       }

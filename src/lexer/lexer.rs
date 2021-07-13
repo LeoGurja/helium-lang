@@ -29,6 +29,7 @@ impl Lexer {
     let current = self.current.get();
 
     let token = match current {
+      ':' => Token::Colon,
       ';' => Token::Semicolon,
       '(' => Token::LeftParen,
       ')' => Token::RightParen,

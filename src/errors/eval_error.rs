@@ -15,11 +15,19 @@ pub enum EvalError {
   CallError(Object),
   TypeError(String, Object),
   IndexError(Object, Object),
+  CannotAssign(Object),
+  UnsupportedHashKey(Type),
 }
 
 impl fmt::Display for EvalError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
+      Self::UnsupportedHashKey(obj) => {
+        write!(f, "UnsupportHashKey:\n\t{} is not a valid key", obj)
+      }
+      Self::CannotAssign(obj) => {
+        write!(f, "CannotAssign:\n\tcannot assign to {}", obj)
+      }
       Self::IndexError(obj, indexer) => {
         write!(
           f,

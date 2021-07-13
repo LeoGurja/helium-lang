@@ -5,6 +5,43 @@ use crate::lexer::Lexer;
 use crate::token::Operator;
 
 #[test]
+fn hash_indexes() {
+  let input = String::from("hash['leonardo']");
+
+  let program = parse(input);
+
+  let expected = vec![Statement::Expression(Expression::Index(
+    Box::new(Expression::Id(String::from("hash"))),
+    Box::new(Expression::String(String::from("leonardo"))),
+  ))];
+
+  compare(program, expected)
+}
+
+#[test]
+fn hash() {
+  let input = String::from("let x = {'leonardo': 'gurgel', 1: 'ferreira'}");
+
+  let program = parse(input);
+
+  let expected = vec![Statement::Let(
+    String::from("x"),
+    Expression::Hash(vec![
+      (
+        Expression::String(String::from("leonardo")),
+        Expression::String(String::from("gurgel")),
+      ),
+      (
+        Expression::Integer(1),
+        Expression::String(String::from("ferreira")),
+      ),
+    ]),
+  )];
+
+  compare(program, expected)
+}
+
+#[test]
 fn reassign() {
   let input = String::from("let x = 0; x = x + 1");
 

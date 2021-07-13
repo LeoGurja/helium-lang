@@ -18,6 +18,7 @@ pub enum Token {
   // Delimiters
   Comma,
   Semicolon,
+  Colon,
 
   LeftParen,
   RightParen,
@@ -52,6 +53,7 @@ impl fmt::Display for Token {
       f,
       "'{}'",
       match self {
+        Self::Colon => ":",
         Self::For => "for",
         Self::In => "in",
         Self::While => "while",

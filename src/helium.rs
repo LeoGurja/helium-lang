@@ -5,6 +5,8 @@ use crate::lexer::Lexer;
 use crate::object::Object;
 use crate::parser::Parser;
 use crate::visitor::Visitor;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 pub fn run(input: String) -> Result<Object, Error> {
   let parser = Parser::new(Lexer::new(input));
@@ -16,7 +18,7 @@ pub fn run(input: String) -> Result<Object, Error> {
   }
 }
 
-pub fn import(env: &Env, input: String) -> Result<(), Error> {
+pub fn import(env: &Rc<RefCell<Env>>, input: String) -> Result<(), Error> {
   let parser = Parser::new(Lexer::new(input));
   let visitor = Visitor::from(env.clone());
 

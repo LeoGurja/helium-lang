@@ -2,6 +2,126 @@ use super::*;
 use crate::ast::{Expression, Statement};
 use crate::object::{Object, Type};
 use crate::token::Operator;
+use std::collections::HashMap;
+
+#[test]
+fn visit_hash_index() {
+  let input = vec![
+    Statement::Let(
+      String::from("x"),
+      Expression::Hash(vec![(
+        Expression::String(String::from("leonardo")),
+        Expression::String(String::from("gurgel")),
+      )]),
+    ),
+    Statement::Expression(Expression::Index(
+      Box::new(Expression::Id(String::from("x"))),
+      Box::new(Expression::String(String::from("leonardo"))),
+    )),
+  ];
+
+  let result = visit(input);
+
+  assert_eq!(result.content, Type::String(String::from("gurgel")))
+}
+
+#[test]
+fn visit_hash() {
+  let input = vec![
+    Statement::Let(
+      String::from("x"),
+      Expression::Hash(vec![
+        (
+          Expression::String(String::from("leonardo")),
+          Expression::String(String::from("gurgel")),
+        ),
+        (Expression::Integer(1), Expression::Integer(2)),
+      ]),
+    ),
+    Statement::Expression(Expression::Id(String::from("x"))),
+  ];
+
+  let mut expected = HashMap::new();
+  expected.insert(
+    String::from("leonardo"),
+    Object::new(Type::String(String::from("gurgel"))),
+  );
+  expected.insert(String::from("1"), Object::new(Type::Integer(2)));
+
+  let result = visit(input);
+
+  assert_eq!(result.content, Type::Hash(expected))
+}
+
+#[test]
+fn visit_while_loop() {
+  let input = vec![
+    Statement::Let(String::from("x"), Expression::Integer(0)),
+    Statement::While(
+      Expression::Infix(
+        Operator::LessThan,
+        Box::new(Expression::Id(String::from("x"))),
+        Box::new(Expression::Integer(10)),
+      ),
+      Box::new(Statement::Expression(Expression::Infix(
+        Operator::Assign,
+        Box::new(Expression::Id(String::from("x"))),
+        Box::new(Expression::Infix(
+          Operator::Plus,
+          Box::new(Expression::Id(String::from("x"))),
+          Box::new(Expression::Integer(1)),
+        )),
+      ))),
+    ),
+    Statement::Expression(Expression::Id(String::from("x"))),
+  ];
+
+  let result = visit(input);
+
+  assert_eq!(result.content, Type::Integer(10))
+}
+
+#[test]
+fn visit_for_loop() {
+  let input = vec![
+    Statement::Let(String::from("x"), Expression::Integer(0)),
+    Statement::For(
+      String::from("i"),
+      Expression::Array(vec![
+        Expression::Integer(1),
+        Expression::Integer(2),
+        Expression::Integer(3),
+      ]),
+      Box::new(Statement::Expression(Expression::Infix(
+        Operator::Assign,
+        Box::new(Expression::Id(String::from("x"))),
+        Box::new(Expression::Id(String::from("i"))),
+      ))),
+    ),
+    Statement::Expression(Expression::Id(String::from("x"))),
+  ];
+
+  let result = visit(input);
+
+  assert_eq!(result.content, Type::Integer(3))
+}
+
+#[test]
+fn visit_reassign() {
+  let input = vec![
+    Statement::Let(String::from("x"), Expression::Integer(0)),
+    Statement::Expression(Expression::Infix(
+      Operator::Assign,
+      Box::new(Expression::Id(String::from("x"))),
+      Box::new(Expression::Integer(1)),
+    )),
+    Statement::Expression(Expression::Id(String::from("x"))),
+  ];
+
+  let result = visit(input);
+
+  assert_eq!(result.content, Type::Integer(1))
+}
 
 #[test]
 fn visit_out_of_bounds_index() {

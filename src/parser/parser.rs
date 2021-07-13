@@ -83,12 +83,25 @@ impl Parser {
       Token::LeftBracket => Ok(Expression::Array(
         self.parse_expression_list(Token::RightBracket)?,
       )),
-      // Token::LeftBrace => Some(Parser::parse_hash_literal),
+      Token::LeftBrace => self.parse_hash(),
       Token::Function => self.parse_function(),
       token => Err(ParserError::ExpectedExpression(token)),
     }?;
 
     self.parse_infix(left, precedence)
+  }
+
+  fn parse_hash(&mut self) -> Result<Expression> {
+    let mut hash = vec![];
+    while !self.eat_if(Token::RightBrace) {
+      let key = self.parse_expression(Precedence::Lowest)?;
+      self.eat(Token::Colon)?;
+      let value = self.parse_expression(Precedence::Lowest)?;
+      hash.push((key, value));
+      self.eat_if(Token::Comma);
+    }
+
+    Ok(Expression::Hash(hash))
   }
 
   fn parse_infix(&mut self, mut left: Expression, precedence: Precedence) -> Result<Expression> {
