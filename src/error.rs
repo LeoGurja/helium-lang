@@ -1,5 +1,5 @@
 use crate::ast::Expression;
-use crate::object::{Object, Type};
+use crate::object::Object;
 use crate::token::{Operator, Token};
 use std::fmt;
 
@@ -10,7 +10,7 @@ pub enum Error {
   ExpectedPrefix(Token),
   ParsingError(String, String),
   ExpectedId(Expression),
-  TypeMismatch(String, Type, Type),
+  TypeMismatch(String, Object, Object),
   UnknownOperator(Operator, Object),
   UndefinedVariable(String),
   WrongParameters(usize, usize),
@@ -18,7 +18,7 @@ pub enum Error {
   TypeError(String, Object),
   IndexError(Object, Object),
   CannotAssign(Object),
-  UnsupportedHashKey(Type),
+  UnsupportedHashKey(Object),
 }
 
 impl fmt::Display for Error {

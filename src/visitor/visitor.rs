@@ -1,7 +1,7 @@
 use crate::ast::{Expression, Statement};
 use crate::env::Env;
 use crate::error::Error;
-use crate::object::{Object, Type};
+use crate::object::Object;
 use crate::token::Operator;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -23,10 +23,10 @@ impl Visitor {
   }
 
   pub fn visit(&self, block: &Vec<Statement>) -> Result {
-    let mut result = Object::NULL;
+    let mut result = Object::Null;
     for statement in block {
       result = self.visit_statement(statement)?;
-      if let Type::Return(value) = result.content {
+      if let Object::Return(value) = result {
         return Ok(*value);
       }
     }
@@ -53,8 +53,8 @@ impl Visitor {
 
   fn visit_for(&self, variable: &String, iterable: &Expression, block: &Statement) -> Result {
     let array = self.visit_expression(iterable)?;
-    let mut evaluated = Object::NULL;
-    if let Type::Array(arr) = array.content {
+    let mut evaluated = Object::Null;
+    if let Object::Array(arr) = array {
       for i in arr {
         self.env.borrow_mut().set(variable, i);
         evaluated = self.visit_statement(block)?;
@@ -66,7 +66,7 @@ impl Visitor {
   }
 
   fn visit_while(&self, condition: &Expression, block: &Statement) -> Result {
-    let mut response = Object::NULL;
+    let mut response = Object::Null;
     while self.visit_expression(condition)?.is_truthy() {
       response = self.visit_statement(block)?;
     }
@@ -76,34 +76,25 @@ impl Visitor {
   fn visit_variable_declaration(&self, name: &String, expression: &Expression) -> Result {
     let value = self.visit_expression(expression)?;
     self.env.borrow_mut().set(&name, value);
-    Ok(Object::NULL)
+    Ok(Object::Null)
   }
 
   fn visit_return(&self, expression: &Option<Expression>) -> Result {
-    Ok(Object::new(Type::Return(Box::new(match expression {
+    Ok(Object::Return(Box::new(match expression {
       Some(value) => self.visit_expression(value)?,
-      None => Object::NULL,
-    }))))
+      None => Object::Null,
+    })))
   }
 
   fn visit_expression(&self, expression: &Expression) -> Result {
     Ok(match &expression {
       Expression::Hash(hash) => self.visit_hash(hash)?,
-      Expression::Index(indexed, indexer) => self.visit_index(
-        self.visit_expression(indexed)?,
-        self.visit_expression(indexer)?,
-      )?,
-      Expression::Array(expressions) => {
-        Object::new(Type::Array(self.visit_expressions(expressions)?))
+      Expression::Index(indexed, indexer) => {
+        self.visit_expression(indexed)?[self.visit_expression(indexer)?].clone()
       }
-      Expression::Boolean(value) => {
-        if *value {
-          Object::TRUE
-        } else {
-          Object::FALSE
-        }
-      }
-      Expression::Integer(value) => Object::new(Type::Integer(*value)),
+      Expression::Array(expressions) => Object::Array(self.visit_expressions(expressions)?),
+      Expression::Boolean(value) => Object::from(*value),
+      Expression::Integer(value) => Object::Integer(*value),
       Expression::Call(function, args) => self.visit_call(function, args)?,
       Expression::Function(name, args, block) => {
         self.visit_function_declaration(name, args, block)?
@@ -114,34 +105,34 @@ impl Visitor {
       }
       Expression::Infix(infix, left, right) => self.visit_infix(infix, left, right)?,
       Expression::Prefix(prefix, expression) => self.visit_prefix(prefix, expression)?,
-      Expression::String(value) => Object::new(Type::String(value.clone())),
+      Expression::String(value) => Object::String(value.clone()),
     })
   }
 
   fn visit_hash(&self, key_values: &Vec<(Expression, Expression)>) -> Result {
     let mut hash = HashMap::new();
     for (key_expression, value_expression) in key_values {
-      let key = match self.visit_expression(&key_expression)?.content {
-        Type::Boolean(b) => b.to_string(),
-        Type::Integer(i) => i.to_string(),
-        Type::String(s) => s,
+      let key = match self.visit_expression(&key_expression)? {
+        Object::Boolean(b) => b.to_string(),
+        Object::Integer(i) => i.to_string(),
+        Object::String(s) => s,
         obj => return Err(Error::UnsupportedHashKey(obj)),
       };
       hash.insert(key, self.visit_expression(&value_expression)?);
     }
 
-    Ok(Object::new(Type::Hash(hash)))
+    Ok(Object::Hash(hash))
   }
 
   fn visit_call(&self, function: &Expression, arg_values: &Vec<Expression>) -> Result {
     let function = self.visit_expression(&function)?;
     let args = self.visit_expressions(arg_values)?;
 
-    match function.content {
-      Type::Function(arg_names, block, env) => {
+    match function {
+      Object::Function(arg_names, block, env) => {
         self.visit_function_call(&arg_names, &args, &block, env)
       }
-      Type::BuiltIn(function) => function(args),
+      Object::BuiltIn(function) => function(args),
       _ => Err(Error::CallError(function)),
     }
   }
@@ -183,11 +174,7 @@ impl Visitor {
     args: &Vec<String>,
     block: &Statement,
   ) -> Result {
-    let function = Object::new(Type::Function(
-      args.clone(),
-      block.clone(),
-      self.env.clone(),
-    ));
+    let function = Object::Function(args.clone(), block.clone(), self.env.clone());
     match name {
       Some(value) => self.env.borrow_mut().set(&value, function.clone()),
       None => (),
@@ -214,7 +201,7 @@ impl Visitor {
     } else {
       match alternative {
         Some(statement) => self.visit_statement(statement),
-        None => Ok(Object::NULL),
+        None => Ok(Object::Null),
       }
     }
   }
@@ -226,54 +213,32 @@ impl Visitor {
     right_expression: &Expression,
   ) -> Result {
     let left = self.visit_expression(left_expression)?;
-    match infix {
+    let right = self.visit_expression(right_expression)?;
+    Ok(match infix {
       Operator::Assign => match left_expression {
         Expression::Id(id) => {
-          let value = self.visit_expression(right_expression)?;
-          self.env.borrow_mut().update(id, value.clone())?;
-          Ok(value)
+          self.env.borrow_mut().update(id, right.clone())?;
+          right
         }
-        _ => Err(Error::CannotAssign(left)),
+        _ => panic!("{}", Error::CannotAssign(left)),
       },
-      Operator::Plus => left.add(self.visit_expression(right_expression)?),
-      Operator::Asterisk => left.multiply(self.visit_expression(right_expression)?),
-      Operator::Equals => Ok(if left == self.visit_expression(right_expression)? {
-        Object::TRUE
-      } else {
-        Object::FALSE
-      }),
-      Operator::NotEquals => Ok(if left != self.visit_expression(right_expression)? {
-        Object::TRUE
-      } else {
-        Object::FALSE
-      }),
-      Operator::GreaterThan => left.greater_than(self.visit_expression(right_expression)?),
-      Operator::LessThan => left.less_than(self.visit_expression(right_expression)?),
-      Operator::Minus => left.subtract(self.visit_expression(right_expression)?),
-      Operator::Slash => left.divide(self.visit_expression(right_expression)?),
-      _ => Err(Error::UnknownOperator(infix.clone(), left)),
-    }
-  }
-
-  fn visit_index(&self, array_obj: Object, index_obj: Object) -> Result {
-    match (&array_obj.content, &index_obj.content) {
-      (Type::Hash(hash), index) => Ok(match hash.get(&index.to_string()) {
-        Some(obj) => obj.clone(),
-        None => Object::NULL,
-      }),
-      (Type::Array(array), Type::Integer(index)) => Ok(match array.get(*index as usize) {
-        Some(obj) => obj.clone(),
-        None => Object::NULL,
-      }),
-      _ => Err(Error::IndexError(array_obj, index_obj)),
-    }
+      Operator::Plus => left + right,
+      Operator::Asterisk => left * right,
+      Operator::Equals => Object::from(left == right),
+      Operator::NotEquals => Object::from(left != right),
+      Operator::GreaterThan => Object::from(left > right),
+      Operator::LessThan => Object::from(left < right),
+      Operator::Minus => left - right,
+      Operator::Slash => left / right,
+      _ => return Err(Error::UnknownOperator(infix.clone(), left)),
+    })
   }
 
   fn visit_prefix(&self, prefix: &Operator, expression: &Expression) -> Result {
     let obj = self.visit_expression(expression)?;
     match prefix {
-      Operator::Bang => Ok(obj.not()),
-      Operator::Minus => Ok(obj.negative()?),
+      Operator::Bang => Ok(!obj),
+      Operator::Minus => Ok(-obj),
       _ => Err(Error::UnknownOperator(prefix.clone(), obj.clone())),
     }
   }

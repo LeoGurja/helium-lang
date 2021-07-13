@@ -5,5 +5,5 @@ pub fn print(args: Vec<Object>) -> Result {
   for arg in args {
     println!("{}", arg);
   }
-  Ok(Object::NULL)
+  Ok(Object::Null)
 }

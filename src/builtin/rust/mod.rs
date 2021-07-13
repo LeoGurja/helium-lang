@@ -8,7 +8,7 @@ mod rest;
 #[cfg(test)]
 mod test;
 use crate::env::Env;
-use crate::object::{Object, Type};
+use crate::object::Object;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -22,7 +22,5 @@ pub fn register(env: &Rc<RefCell<Env>>) {
 }
 
 fn add(env: &Rc<RefCell<Env>>, name: &str, function: fn(Vec<Object>) -> helpers::Result) {
-  env
-    .borrow_mut()
-    .set(name, Object::new(Type::BuiltIn(function)))
+  env.borrow_mut().set(name, Object::BuiltIn(function))
 }

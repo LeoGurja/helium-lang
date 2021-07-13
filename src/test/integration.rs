@@ -1,5 +1,5 @@
 use crate::helium;
-use crate::object::{Object, Type};
+use crate::object::Object;
 
 #[test]
 fn book_name() {
@@ -28,9 +28,7 @@ fn book_name() {
 
   assert_eq!(
     result,
-    Object::new(Type::String(String::from(
-      "Thorsten Ball - Writing A Compiler In Go"
-    )))
+    Object::String(String::from("Thorsten Ball - Writing A Compiler In Go"))
   )
 }
 
@@ -57,13 +55,13 @@ fn fibonacci() {
 
   assert_eq!(
     result,
-    Object::new(Type::Array(vec![
-      Object::new(Type::Integer(1)),
-      Object::new(Type::Integer(1)),
-      Object::new(Type::Integer(2)),
-      Object::new(Type::Integer(3)),
-      Object::new(Type::Integer(5)),
-      Object::new(Type::Integer(8))
-    ]))
+    Object::Array(vec![
+      Object::Integer(1),
+      Object::Integer(1),
+      Object::Integer(2),
+      Object::Integer(3),
+      Object::Integer(5),
+      Object::Integer(8)
+    ])
   )
 }

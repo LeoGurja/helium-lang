@@ -1,6 +1,6 @@
 use super::*;
 use crate::ast::{Expression, Statement};
-use crate::object::{Object, Type};
+use crate::object::Object;
 use crate::token::Operator;
 use std::collections::HashMap;
 
@@ -22,7 +22,7 @@ fn visit_hash_index() {
 
   let result = visit(input);
 
-  assert_eq!(result.content, Type::String(String::from("gurgel")))
+  assert_eq!(result, Object::String(String::from("gurgel")))
 }
 
 #[test]
@@ -44,13 +44,13 @@ fn visit_hash() {
   let mut expected = HashMap::new();
   expected.insert(
     String::from("leonardo"),
-    Object::new(Type::String(String::from("gurgel"))),
+    Object::String(String::from("gurgel")),
   );
-  expected.insert(String::from("1"), Object::new(Type::Integer(2)));
+  expected.insert(String::from("1"), Object::Integer(2));
 
   let result = visit(input);
 
-  assert_eq!(result.content, Type::Hash(expected))
+  assert_eq!(result, Object::Hash(expected))
 }
 
 #[test]
@@ -78,7 +78,7 @@ fn visit_while_loop() {
 
   let result = visit(input);
 
-  assert_eq!(result.content, Type::Integer(10))
+  assert_eq!(result, Object::Integer(10))
 }
 
 #[test]
@@ -103,7 +103,7 @@ fn visit_for_loop() {
 
   let result = visit(input);
 
-  assert_eq!(result.content, Type::Integer(3))
+  assert_eq!(result, Object::Integer(3))
 }
 
 #[test]
@@ -120,7 +120,7 @@ fn visit_reassign() {
 
   let result = visit(input);
 
-  assert_eq!(result.content, Type::Integer(1))
+  assert_eq!(result, Object::Integer(1))
 }
 
 #[test]
@@ -136,7 +136,7 @@ fn visit_out_of_bounds_index() {
 
   let result = visit(input);
 
-  assert_eq!(result, Object::NULL)
+  assert_eq!(result, Object::Null)
 }
 
 #[test]
@@ -152,7 +152,7 @@ fn visit_array_index() {
 
   let result = visit(input);
 
-  assert_eq!(result.content, Type::Integer(2))
+  assert_eq!(result, Object::Integer(2))
 }
 
 #[test]
@@ -164,11 +164,8 @@ fn visit_array() {
 
   let result = visit(input);
   assert_eq!(
-    result.content,
-    Type::Array(vec![
-      Object::new(Type::String(String::from("x"))),
-      Object::new(Type::Integer(1))
-    ])
+    result,
+    Object::Array(vec![Object::String(String::from("x")), Object::Integer(1)])
   )
 }
 
@@ -182,10 +179,7 @@ fn visit_string_concat() {
 
   let result = visit(input);
 
-  assert_eq!(
-    result.content,
-    Type::String(String::from("leonardo gurgel"))
-  )
+  assert_eq!(result, Object::String(String::from("leonardo gurgel")))
 }
 
 #[test]
@@ -196,10 +190,7 @@ fn visit_string() {
 
   let result = visit(input);
 
-  assert_eq!(
-    result.content,
-    Type::String(String::from("leonardo gurgel"))
-  )
+  assert_eq!(result, Object::String(String::from("leonardo gurgel")))
 }
 
 #[test]
@@ -219,7 +210,7 @@ fn visit_function_doesnt_have_frozen_parent() {
 
   let result = visit(input);
 
-  assert_eq!(result.content, Type::Integer(5))
+  assert_eq!(result, Object::Integer(5))
 }
 
 #[test]
@@ -253,7 +244,7 @@ fn visit_closure() {
 
   let result = visit(input);
 
-  assert_eq!(result.content, Type::Integer(5))
+  assert_eq!(result, Object::Integer(5))
 }
 
 #[test]
@@ -273,7 +264,7 @@ fn visit_function_with_outer_scope() {
 
   let result = visit(input);
 
-  assert_eq!(result.content, Type::Integer(5))
+  assert_eq!(result, Object::Integer(5))
 }
 
 #[test]
@@ -291,7 +282,7 @@ fn visit_function_call() {
   ];
 
   let result = visit(input);
-  assert_eq!(result.content, Type::Integer(1))
+  assert_eq!(result, Object::Integer(1))
 }
 
 #[test]
@@ -303,8 +294,8 @@ fn visit_function_declaration() {
   ))];
 
   let result = visit(input);
-  match result.content {
-    Type::Function(args, block, ..) => {
+  match result {
+    Object::Function(args, block, ..) => {
       assert_eq!(block, Statement::Expression(Expression::TRUE));
       assert_eq!(args, vec![String::from("argv")]);
     }
@@ -321,7 +312,7 @@ fn visit_integer_variable_declaration() {
 
   let result = visit(input);
 
-  assert_eq!(result.content, Type::Integer(5))
+  assert_eq!(result, Object::Integer(5))
 }
 
 #[test]
@@ -345,7 +336,7 @@ fn visit_return() {
 
   let result = visit(input);
 
-  assert_eq!(result.content, Type::Integer(5))
+  assert_eq!(result, Object::Integer(5))
 }
 
 #[test]
@@ -357,7 +348,7 @@ fn visit_empty_return() {
 
   let result = visit(input);
 
-  assert_eq!(result, Object::NULL)
+  assert_eq!(result, Object::Null)
 }
 
 #[test]
@@ -370,7 +361,7 @@ fn visit_if() {
 
   let result = visit(input);
 
-  assert_eq!(result.content, Type::Integer(5))
+  assert_eq!(result, Object::Integer(5))
 }
 
 #[test]
@@ -383,7 +374,7 @@ fn visit_else() {
 
   let result = visit(input);
 
-  assert_eq!(result.content, Type::Integer(1))
+  assert_eq!(result, Object::Integer(1))
 }
 
 #[test]
@@ -396,7 +387,7 @@ fn visit_no_else() {
 
   let result = visit(input);
 
-  assert_eq!(result, Object::NULL)
+  assert_eq!(result, Object::Null)
 }
 
 #[test]
@@ -409,7 +400,7 @@ fn visit_infix_plus() {
 
   let result = visit(input);
 
-  assert_eq!(result.content, Type::Integer(10))
+  assert_eq!(result, Object::Integer(10))
 }
 
 #[test]
@@ -500,7 +491,7 @@ fn visit_infix_minus() {
 
   let result = visit(input);
 
-  assert_eq!(result.content, Type::Integer(0))
+  assert_eq!(result, Object::Integer(0))
 }
 
 #[test]
@@ -513,7 +504,7 @@ fn visit_infix_multiply() {
 
   let result = visit(input);
 
-  assert_eq!(result.content, Type::Integer(25))
+  assert_eq!(result, Object::Integer(25))
 }
 
 #[test]
@@ -526,7 +517,7 @@ fn visit_infix_divide() {
 
   let result = visit(input);
 
-  assert_eq!(result.content, Type::Integer(5))
+  assert_eq!(result, Object::Integer(5))
 }
 
 #[test]
@@ -538,7 +529,7 @@ fn visit_minus() {
 
   let result = visit(input);
 
-  assert_eq!(result.content, Type::Integer(-5))
+  assert_eq!(result, Object::Integer(-5))
 }
 
 #[test]
@@ -581,7 +572,7 @@ fn visit_multiple_bangs() {
 fn visit_integer_expression() {
   let input = vec![Statement::Expression(Expression::Integer(5))];
   let result = visit(input);
-  assert_eq!(result.content, Type::Integer(5))
+  assert_eq!(result, Object::Integer(5))
 }
 
 #[test]
@@ -589,7 +580,7 @@ fn visit_boolean_expression() {
   let input = vec![Statement::Expression(Expression::TRUE)];
 
   let result = visit(input);
-  assert_eq!(result, Object::new(Type::Boolean(true)))
+  assert_eq!(result, Object::Boolean(true))
 }
 
 fn visit(input: Vec<Statement>) -> Object {
