@@ -1,3 +1,5 @@
-fn reduce() {
-  1
+fn reduce(arr, function, initial) {
+  if len(arr) == 0 return arr
+
+  reduce(rest(arr), function, function(initial, arr[0]))
 }

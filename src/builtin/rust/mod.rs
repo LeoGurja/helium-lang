@@ -2,7 +2,9 @@ mod first;
 mod helpers;
 mod last;
 mod len;
+mod print;
 mod push;
+mod rest;
 #[cfg(test)]
 mod test;
 use crate::env::Env;
@@ -15,6 +17,8 @@ pub fn register(env: &Rc<RefCell<Env>>) {
   add(env, "first", first::first);
   add(env, "last", last::last);
   add(env, "push", push::push);
+  add(env, "print", print::print);
+  add(env, "rest", rest::rest);
 }
 
 fn add(env: &Rc<RefCell<Env>>, name: &str, function: fn(Vec<Object>) -> helpers::Result) {

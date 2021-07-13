@@ -1,13 +1,13 @@
 use crate::ast::{Expression, Statement};
 use crate::env::Env;
-use crate::errors::EvalError;
+use crate::error::Error;
 use crate::object::{Object, Type};
 use crate::token::Operator;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-pub type Result = std::result::Result<Object, EvalError>;
+pub type Result = std::result::Result<Object, Error>;
 
 pub struct Visitor {
   pub env: Rc<RefCell<Env>>,
@@ -61,7 +61,7 @@ impl Visitor {
       }
       Ok(evaluated)
     } else {
-      Err(EvalError::TypeError(String::from("array"), array))
+      Err(Error::TypeError(String::from("array"), array))
     }
   }
 
@@ -125,7 +125,7 @@ impl Visitor {
         Type::Boolean(b) => b.to_string(),
         Type::Integer(i) => i.to_string(),
         Type::String(s) => s,
-        obj => return Err(EvalError::UnsupportedHashKey(obj)),
+        obj => return Err(Error::UnsupportedHashKey(obj)),
       };
       hash.insert(key, self.visit_expression(&value_expression)?);
     }
@@ -142,14 +142,14 @@ impl Visitor {
         self.visit_function_call(&arg_names, &args, &block, env)
       }
       Type::BuiltIn(function) => function(args),
-      _ => Err(EvalError::CallError(function)),
+      _ => Err(Error::CallError(function)),
     }
   }
 
   fn visit_expressions(
     &self,
     expressions: &[Expression],
-  ) -> std::result::Result<Vec<Object>, EvalError> {
+  ) -> std::result::Result<Vec<Object>, Error> {
     let mut results = vec![];
     for expression in expressions {
       results.push(self.visit_expression(expression)?);
@@ -165,10 +165,7 @@ impl Visitor {
     env: Rc<RefCell<Env>>,
   ) -> Result {
     if arg_names.len() != arg_values.len() {
-      return Err(EvalError::WrongParameters(
-        arg_names.len(),
-        arg_values.len(),
-      ));
+      return Err(Error::WrongParameters(arg_names.len(), arg_values.len()));
     }
     let child_env = Env::local(env);
     for i in 0..arg_names.len() {
@@ -202,7 +199,7 @@ impl Visitor {
   fn visit_variable(&self, name: &str) -> Result {
     match self.env.borrow().get(name) {
       Some(value) => Ok(value),
-      None => Err(EvalError::UndefinedVariable(name.to_string())),
+      None => Err(Error::UndefinedVariable(name.to_string())),
     }
   }
 
@@ -236,7 +233,7 @@ impl Visitor {
           self.env.borrow_mut().update(id, value.clone())?;
           Ok(value)
         }
-        _ => Err(EvalError::CannotAssign(left)),
+        _ => Err(Error::CannotAssign(left)),
       },
       Operator::Plus => left.add(self.visit_expression(right_expression)?),
       Operator::Asterisk => left.multiply(self.visit_expression(right_expression)?),
@@ -254,7 +251,7 @@ impl Visitor {
       Operator::LessThan => left.less_than(self.visit_expression(right_expression)?),
       Operator::Minus => left.subtract(self.visit_expression(right_expression)?),
       Operator::Slash => left.divide(self.visit_expression(right_expression)?),
-      _ => Err(EvalError::UnknownOperator(Box::new(infix.clone()), left)),
+      _ => Err(Error::UnknownOperator(infix.clone(), left)),
     }
   }
 
@@ -268,7 +265,7 @@ impl Visitor {
         Some(obj) => obj.clone(),
         None => Object::NULL,
       }),
-      _ => Err(EvalError::IndexError(array_obj, index_obj)),
+      _ => Err(Error::IndexError(array_obj, index_obj)),
     }
   }
 
@@ -277,10 +274,7 @@ impl Visitor {
     match prefix {
       Operator::Bang => Ok(obj.not()),
       Operator::Minus => Ok(obj.negative()?),
-      _ => Err(EvalError::UnknownOperator(
-        Box::new(prefix.clone()),
-        obj.clone(),
-      )),
+      _ => Err(Error::UnknownOperator(prefix.clone(), obj.clone())),
     }
   }
 }

@@ -1,15 +1,17 @@
+use crate::ast::Expression;
 use crate::object::{Object, Type};
+use crate::token::{Operator, Token};
 use std::fmt;
 
-pub trait UnwrappedPrintable: fmt::Debug + fmt::Display {}
-impl<T: fmt::Debug + fmt::Display> UnwrappedPrintable for T {}
-
-type Printable = Box<dyn UnwrappedPrintable>;
-
-#[derive(Debug)]
-pub enum EvalError {
+#[derive(Debug, Clone)]
+pub enum Error {
+  UnexpectedToken(Token, Token),
+  ExpectedExpression(Token),
+  ExpectedPrefix(Token),
+  ParsingError(String, String),
+  ExpectedId(Expression),
   TypeMismatch(String, Type, Type),
-  UnknownOperator(Printable, Object),
+  UnknownOperator(Operator, Object),
   UndefinedVariable(String),
   WrongParameters(usize, usize),
   CallError(Object),
@@ -19,7 +21,7 @@ pub enum EvalError {
   UnsupportedHashKey(Type),
 }
 
-impl fmt::Display for EvalError {
+impl fmt::Display for Error {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
       Self::UnsupportedHashKey(obj) => {
@@ -68,6 +70,37 @@ impl fmt::Display for EvalError {
       }
       Self::CallError(name) => {
         write!(f, "CallError:\n\t{} is not a function", name)
+      }
+      Self::ExpectedId(got) => {
+        write!(f, "ExpectedId:\n\tExpected an id, got {} instead", got)
+      }
+      Self::UnexpectedToken(expected, got) => {
+        write!(
+          f,
+          "UnexpectedToken:\n\tExpected {}, got {:?} instead",
+          expected, got
+        )
+      }
+      Self::ParsingError(expected, got) => {
+        write!(
+          f,
+          "ParsingError:\n\tExpected a valid {}, got {} instead",
+          expected, got
+        )
+      }
+      Self::ExpectedExpression(got) => {
+        write!(
+          f,
+          "ExpectedExpression:\n\tExpected an expression, got {:?} instead",
+          got
+        )
+      }
+      Self::ExpectedPrefix(got) => {
+        write!(
+          f,
+          "ExpectedPrefix:\n\tExpected a prefix, got {:?} instead",
+          got
+        )
       }
     }
   }

@@ -1,8 +1,9 @@
 use super::Type;
-use crate::errors::EvalError;
+use crate::error::Error;
+use crate::token::Operator;
 use std::fmt;
 
-type Result = std::result::Result<Object, EvalError>;
+type Result = std::result::Result<Object, Error>;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Object {
@@ -35,10 +36,7 @@ impl Object {
   pub fn negative(&self) -> Result {
     match self.content {
       Type::Integer(value) => Ok(Object::new(Type::Integer(-value))),
-      _ => Err(EvalError::UnknownOperator(
-        Box::new(String::from("-")),
-        self.clone(),
-      )),
+      _ => Err(Error::UnknownOperator(Operator::Minus, self.clone())),
     }
   }
 
@@ -47,7 +45,7 @@ impl Object {
       (Type::Integer(left), Type::Integer(right)) => Object::new(Type::Integer(left + right)),
       (Type::String(left), Type::String(right)) => Object::new(Type::String(left.clone() + right)),
       (left, right) => {
-        return Err(EvalError::TypeMismatch(
+        return Err(Error::TypeMismatch(
           String::from("+"),
           left.clone(),
           right.clone(),
@@ -60,7 +58,7 @@ impl Object {
     Ok(match (&self.content, &obj.content) {
       (Type::Integer(left), Type::Integer(right)) => Object::new(Type::Integer(left - right)),
       (left, right) => {
-        return Err(EvalError::TypeMismatch(
+        return Err(Error::TypeMismatch(
           String::from("*"),
           left.clone(),
           right.clone(),
@@ -73,7 +71,7 @@ impl Object {
     Ok(match (&self.content, &obj.content) {
       (Type::Integer(left), Type::Integer(right)) => Object::new(Type::Integer(left * right)),
       (left, right) => {
-        return Err(EvalError::TypeMismatch(
+        return Err(Error::TypeMismatch(
           String::from("/"),
           left.clone(),
           right.clone(),
@@ -86,7 +84,7 @@ impl Object {
     Ok(match (&self.content, &obj.content) {
       (Type::Integer(left), Type::Integer(right)) => Object::new(Type::Integer(left / right)),
       (left, right) => {
-        return Err(EvalError::TypeMismatch(
+        return Err(Error::TypeMismatch(
           String::from("/"),
           left.clone(),
           right.clone(),
@@ -105,7 +103,7 @@ impl Object {
         }
       }
       (left, right) => {
-        return Err(EvalError::TypeMismatch(
+        return Err(Error::TypeMismatch(
           String::from(">"),
           left.clone(),
           right.clone(),
@@ -124,7 +122,7 @@ impl Object {
         }
       }
       (left, right) => {
-        return Err(EvalError::TypeMismatch(
+        return Err(Error::TypeMismatch(
           String::from("<"),
           left.clone(),
           right.clone(),

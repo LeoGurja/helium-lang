@@ -1,15 +1,15 @@
 use crate::ast::{Expression, Precedence, Statement};
-use crate::errors::ParserError;
+use crate::error::Error;
 use crate::lexer::Lexer;
 use crate::token::{Operator, Token};
 use std::cell::Cell;
 
-type Result<T> = std::result::Result<T, ParserError>;
+type Result<T> = std::result::Result<T, Error>;
 
 pub struct Parser {
   lexer: Lexer,
   current: Cell<Token>,
-  errors: Vec<ParserError>,
+  errors: Vec<Error>,
 }
 
 impl Parser {
@@ -21,7 +21,7 @@ impl Parser {
     }
   }
 
-  pub fn parse(&mut self) -> std::result::Result<Vec<Statement>, Vec<ParserError>> {
+  pub fn parse(&mut self) -> std::result::Result<Vec<Statement>, Vec<Error>> {
     let mut block = vec![];
 
     loop {
@@ -85,7 +85,7 @@ impl Parser {
       )),
       Token::LeftBrace => self.parse_hash(),
       Token::Function => self.parse_function(),
-      token => Err(ParserError::ExpectedExpression(token)),
+      token => Err(Error::ExpectedExpression(token)),
     }?;
 
     self.parse_infix(left, precedence)
@@ -138,12 +138,7 @@ impl Parser {
     self.eat(Token::For)?;
     let variable = match self.advance() {
       Token::Id(id) => id,
-      token => {
-        return Err(ParserError::UnexpectedToken(
-          Token::Id(String::from("..")),
-          token,
-        ))
-      }
+      token => return Err(Error::UnexpectedToken(Token::Id(String::from("..")), token)),
     };
     self.eat(Token::In)?;
 
@@ -171,14 +166,14 @@ impl Parser {
         Some(id)
       }
       Token::LeftParen => None,
-      token => return Err(ParserError::UnexpectedToken(Token::LeftParen, token)),
+      token => return Err(Error::UnexpectedToken(Token::LeftParen, token)),
     };
 
     while !self.eat_if(Token::RightParen) {
       match self.advance() {
         Token::Id(arg) => args.push(arg),
         token => {
-          return Err(ParserError::UnexpectedToken(
+          return Err(Error::UnexpectedToken(
             Token::Id(String::from("...")),
             token,
           ))
@@ -195,19 +190,17 @@ impl Parser {
     ))
   }
 
-  fn parse_expression_list(
-    &mut self,
-    end: Token,
-  ) -> std::result::Result<Vec<Expression>, ParserError> {
+  fn parse_expression_list(&mut self, end: Token) -> std::result::Result<Vec<Expression>, Error> {
     let mut args = vec![];
-    loop {
+    while !self.eat_if(end.clone()) {
       args.push(self.parse_expression(Precedence::Lowest)?);
 
       if !self.eat_if(Token::Comma) {
         self.eat(end)?;
-        return Ok(args);
+        break;
       }
     }
+    Ok(args)
   }
 
   fn parse_if_expression(&mut self) -> Result<Expression> {
@@ -244,7 +237,7 @@ impl Parser {
   fn parse_integer(&mut self, integer: String) -> Result<Expression> {
     match integer.parse() {
       Ok(value) => Ok(Expression::Integer(value)),
-      Err(_) => Err(ParserError::ParsingError(String::from("integer"), integer)),
+      Err(_) => Err(Error::ParsingError(String::from("integer"), integer)),
     }
   }
 
@@ -259,7 +252,7 @@ impl Parser {
     let name = match self.advance() {
       Token::Id(id) => id.clone(),
       token => {
-        return Err(ParserError::UnexpectedToken(
+        return Err(Error::UnexpectedToken(
           Token::Id(String::from("...")),
           token,
         ))
@@ -289,7 +282,7 @@ impl Parser {
     if token == should_be {
       Ok(should_be)
     } else {
-      Err(ParserError::UnexpectedToken(should_be, token))
+      Err(Error::UnexpectedToken(should_be, token))
     }
   }
 

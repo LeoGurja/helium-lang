@@ -1,12 +1,13 @@
 pub mod ast;
 pub mod builtin;
 pub mod env;
-pub mod errors;
+pub mod error;
 pub mod helium;
 pub mod helpers;
 pub mod lexer;
 pub mod object;
 pub mod parser;
 pub mod repl;
+mod test;
 pub mod token;
 pub mod visitor;

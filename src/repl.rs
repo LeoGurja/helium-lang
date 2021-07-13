@@ -1,16 +1,23 @@
-use crate::helium;
+use crate::lexer::Lexer;
+use crate::parser::Parser;
+use crate::visitor::Visitor;
 use std::io;
 use std::io::Write;
 
 pub fn repl() {
   print_welcome();
 
+  let visitor = Visitor::new();
   loop {
-    let result = helium::run(ask_input(">> "));
+    let input = read();
+    let program = Parser::new(Lexer::new(input)).parse();
 
-    match result {
-      Ok(obj) => println!("{}", obj),
-      Err(err) => println!("{}", err),
+    match program {
+      Ok(program) => match visitor.visit(&program) {
+        Ok(obj) => println!("{}", obj),
+        Err(err) => println!("{}", err),
+      },
+      Err(errs) => println!("Parse errors:\n\t{:?}", errs),
     }
   }
 }
@@ -33,12 +40,12 @@ fn print_welcome() {
   println!("Feel free to type in commands");
 }
 
-fn ask_input(prompt: &str) -> String {
+fn read() -> String {
   let mut stdout = io::stdout();
   let stdin = io::stdin();
   let mut input = String::new();
 
-  print!("{}", prompt);
+  print!("{}", ">> ");
   stdout.flush().expect("Failed to flush stdout");
   stdin
     .read_line(&mut input)

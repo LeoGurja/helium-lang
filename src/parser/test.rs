@@ -1,6 +1,6 @@
 use super::parser::*;
 use crate::ast::{Expression, Statement};
-use crate::errors::ParserError;
+use crate::error::Error;
 use crate::lexer::Lexer;
 use crate::token::Operator;
 
@@ -580,18 +580,18 @@ fn precedence() {
   }
 }
 
-fn parse(input: String) -> Result<Vec<Statement>, Vec<ParserError>> {
+fn parse(input: String) -> Result<Vec<Statement>, Vec<Error>> {
   let mut parser = Parser::new(Lexer::new(input));
   parser.parse()
 }
 
-fn compare(program: Result<Vec<Statement>, Vec<ParserError>>, expected: Vec<Statement>) {
+fn compare(program: Result<Vec<Statement>, Vec<Error>>, expected: Vec<Statement>) {
   for (a, b) in to_block(program).iter().zip(expected.iter()) {
     assert_eq!(a, b)
   }
 }
 
-fn to_block(program: Result<Vec<Statement>, Vec<ParserError>>) -> Vec<Statement> {
+fn to_block(program: Result<Vec<Statement>, Vec<Error>>) -> Vec<Statement> {
   match program {
     Ok(p) => p,
     Err(e) => panic!("Parser has errors:\n\t{:?}", e),

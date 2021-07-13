@@ -1,0 +1,10 @@
+fn map(array, function) {
+  fn iter(arr, acc) {
+    if len(arr) == 0 {
+      acc
+    } else {
+      iter(rest(arr), push(acc, function(first(arr))))
+    }
+  }
+  iter(array, [])
+}

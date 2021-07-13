@@ -1,5 +1,5 @@
 use crate::builtin;
-use crate::errors::EvalError;
+use crate::error::Error;
 use crate::object::Object;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -38,18 +38,18 @@ impl Env {
     }
   }
 
-  pub fn update(&mut self, key: &str, value: Object) -> Result<(), EvalError> {
+  pub fn update(&mut self, key: &str, value: Object) -> Result<(), Error> {
     if self.store.contains_key(key) {
       Ok(self.set(key, value))
     } else {
       match &self.parent {
         Some(parent) => parent.borrow_mut().update(key, value),
-        None => Err(EvalError::UndefinedVariable(key.to_owned())),
+        None => Err(Error::UndefinedVariable(key.to_owned())),
       }
     }
   }
 
   pub fn set(&mut self, key: &str, value: Object) {
-    self.store.insert(key.to_lowercase(), value);
+    self.store.insert(key.to_owned(), value);
   }
 }

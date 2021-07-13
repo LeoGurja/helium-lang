@@ -1,7 +1,7 @@
 use super::Object;
 use crate::ast::Statement;
 use crate::env::Env;
-use crate::errors::EvalError;
+use crate::error::Error;
 use crate::helpers::comma_separated;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -16,7 +16,7 @@ pub enum Type {
   Boolean(bool),
   Return(Box<Object>),
   Function(Vec<String>, Statement, Rc<RefCell<Env>>),
-  BuiltIn(fn(Vec<Object>) -> Result<Object, EvalError>),
+  BuiltIn(fn(Vec<Object>) -> Result<Object, Error>),
   Hash(HashMap<String, Object>),
   Null,
 }

@@ -64,6 +64,12 @@ fn string_last() {
   assert_eq!(visit(input).content, Type::String(String::from("o")))
 }
 
+#[test]
+fn print() {
+  let input = String::from("print('hello world')");
+  assert_eq!(visit(input).content, Type::Null)
+}
+
 fn visit(input: String) -> Object {
   let visitor = Visitor::new();
   let result = visitor.visit(&parse(Parser::new(Lexer::new(input))));
