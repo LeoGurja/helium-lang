@@ -1,11 +1,11 @@
 use super::*;
-use crate::ast::{Block, Expression, Infix, Prefix, Statement};
-use crate::object::Object;
+use crate::ast::{Expression, Statement};
+use crate::object::{Object, Type};
+use crate::token::Operator;
 
 #[test]
 fn visit_out_of_bounds_index() {
-  let input = vec![Statement::Expression(Expression::Infix(
-    Infix::Index,
+  let input = vec![Statement::Expression(Expression::Index(
     Box::new(Expression::Array(vec![
       Expression::Integer(1),
       Expression::Integer(2),
@@ -16,13 +16,12 @@ fn visit_out_of_bounds_index() {
 
   let result = visit(input);
 
-  assert_eq!(result, Object::Null)
+  assert_eq!(result, Object::NULL)
 }
 
 #[test]
 fn visit_array_index() {
-  let input = vec![Statement::Expression(Expression::Infix(
-    Infix::Index,
+  let input = vec![Statement::Expression(Expression::Index(
     Box::new(Expression::Array(vec![
       Expression::Integer(1),
       Expression::Integer(2),
@@ -33,7 +32,7 @@ fn visit_array_index() {
 
   let result = visit(input);
 
-  assert_eq!(result, Object::Integer(2))
+  assert_eq!(result.content, Type::Integer(2))
 }
 
 #[test]
@@ -45,22 +44,28 @@ fn visit_array() {
 
   let result = visit(input);
   assert_eq!(
-    result,
-    Object::Array(vec![Object::String(String::from("x")), Object::Integer(1)])
+    result.content,
+    Type::Array(vec![
+      Object::new(Type::String(String::from("x"))),
+      Object::new(Type::Integer(1))
+    ])
   )
 }
 
 #[test]
 fn visit_string_concat() {
   let input = vec![Statement::Expression(Expression::Infix(
-    Infix::Plus,
+    Operator::Plus,
     Box::new(Expression::String(String::from("leonardo"))),
     Box::new(Expression::String(String::from(" gurgel"))),
   ))];
 
   let result = visit(input);
 
-  assert_eq!(result, Object::String(String::from("leonardo gurgel")))
+  assert_eq!(
+    result.content,
+    Type::String(String::from("leonardo gurgel"))
+  )
 }
 
 #[test]
@@ -71,7 +76,10 @@ fn visit_string() {
 
   let result = visit(input);
 
-  assert_eq!(result, Object::String(String::from("leonardo gurgel")))
+  assert_eq!(
+    result.content,
+    Type::String(String::from("leonardo gurgel"))
+  )
 }
 
 #[test]
@@ -80,15 +88,18 @@ fn visit_function_doesnt_have_frozen_parent() {
     Statement::Expression(Expression::Function(
       Some(String::from("print_i")),
       vec![],
-      vec![Statement::Expression(Expression::Id(String::from("i")))],
+      Box::new(Statement::Expression(Expression::Id(String::from("i")))),
     )),
     Statement::Let(String::from("i"), Expression::Integer(5)),
-    Statement::Expression(Expression::Call(String::from("print_i"), vec![])),
+    Statement::Expression(Expression::Call(
+      Box::new(Expression::Id(String::from("print_i"))),
+      vec![],
+    )),
   ];
 
   let result = visit(input);
 
-  assert_eq!(result, Object::Integer(5))
+  assert_eq!(result.content, Type::Integer(5))
 }
 
 #[test]
@@ -97,29 +108,32 @@ fn visit_closure() {
     Statement::Expression(Expression::Function(
       Some(String::from("adder")),
       vec![String::from("x")],
-      vec![Statement::Expression(Expression::Function(
+      Box::new(Statement::Expression(Expression::Function(
         None,
         vec![String::from("y")],
-        vec![Statement::Expression(Expression::Infix(
-          Infix::Plus,
+        Box::new(Statement::Expression(Expression::Infix(
+          Operator::Plus,
           Box::new(Expression::Id(String::from("x"))),
           Box::new(Expression::Id(String::from("y"))),
-        ))],
-      ))],
+        ))),
+      ))),
     )),
     Statement::Let(
       String::from("add_two"),
-      Expression::Call(String::from("adder"), vec![Expression::Integer(2)]),
+      Expression::Call(
+        Box::new(Expression::Id(String::from("adder"))),
+        vec![Expression::Integer(2)],
+      ),
     ),
     Statement::Expression(Expression::Call(
-      String::from("add_two"),
+      Box::new(Expression::Id(String::from("add_two"))),
       vec![Expression::Integer(3)],
     )),
   ];
 
   let result = visit(input);
 
-  assert_eq!(result, Object::Integer(5))
+  assert_eq!(result.content, Type::Integer(5))
 }
 
 #[test]
@@ -129,14 +143,17 @@ fn visit_function_with_outer_scope() {
     Statement::Expression(Expression::Function(
       Some(String::from("print_i")),
       vec![],
-      vec![Statement::Expression(Expression::Id(String::from("i")))],
+      Box::new(Statement::Expression(Expression::Id(String::from("i")))),
     )),
-    Statement::Expression(Expression::Call(String::from("print_i"), vec![])),
+    Statement::Expression(Expression::Call(
+      Box::new(Expression::Id(String::from("print_i"))),
+      vec![],
+    )),
   ];
 
   let result = visit(input);
 
-  assert_eq!(result, Object::Integer(5))
+  assert_eq!(result.content, Type::Integer(5))
 }
 
 #[test]
@@ -145,16 +162,16 @@ fn visit_function_call() {
     Statement::Expression(Expression::Function(
       Some(String::from("identity")),
       vec![String::from("x")],
-      vec![Statement::Expression(Expression::Id(String::from("x")))],
+      Box::new(Statement::Expression(Expression::Id(String::from("x")))),
     )),
     Statement::Expression(Expression::Call(
-      String::from("identity"),
+      Box::new(Expression::Id(String::from("identity"))),
       vec![Expression::Integer(1)],
     )),
   ];
 
   let result = visit(input);
-  assert_eq!(result, Object::Integer(1))
+  assert_eq!(result.content, Type::Integer(1))
 }
 
 #[test]
@@ -162,13 +179,13 @@ fn visit_function_declaration() {
   let input = vec![Statement::Expression(Expression::Function(
     Some(String::from("name")),
     vec![String::from("argv")],
-    vec![Statement::Expression(Expression::TRUE)],
+    Box::new(Statement::Expression(Expression::TRUE)),
   ))];
 
   let result = visit(input);
-  match result {
-    Object::Function(args, block, ..) => {
-      assert_eq!(block, vec![Statement::Expression(Expression::TRUE)]);
+  match result.content {
+    Type::Function(args, block, ..) => {
+      assert_eq!(block, Statement::Expression(Expression::TRUE));
       assert_eq!(args, vec![String::from("argv")]);
     }
     _ => panic!("not a function"),
@@ -184,7 +201,7 @@ fn visit_integer_variable_declaration() {
 
   let result = visit(input);
 
-  assert_eq!(result, Object::Integer(5))
+  assert_eq!(result.content, Type::Integer(5))
 }
 
 #[test]
@@ -208,7 +225,7 @@ fn visit_return() {
 
   let result = visit(input);
 
-  assert_eq!(result, Object::Integer(5))
+  assert_eq!(result.content, Type::Integer(5))
 }
 
 #[test]
@@ -220,65 +237,65 @@ fn visit_empty_return() {
 
   let result = visit(input);
 
-  assert_eq!(result, Object::Null)
+  assert_eq!(result, Object::NULL)
 }
 
 #[test]
 fn visit_if() {
   let input = vec![Statement::Expression(Expression::If(
     Box::new(Expression::TRUE),
-    vec![Statement::Expression(Expression::Integer(5))],
+    Box::new(Statement::Expression(Expression::Integer(5))),
     None,
   ))];
 
   let result = visit(input);
 
-  assert_eq!(result, Object::Integer(5))
+  assert_eq!(result.content, Type::Integer(5))
 }
 
 #[test]
 fn visit_else() {
   let input = vec![Statement::Expression(Expression::If(
     Box::new(Expression::FALSE),
-    vec![Statement::Expression(Expression::Integer(5))],
-    Some(vec![Statement::Expression(Expression::Integer(1))]),
+    Box::new(Statement::Expression(Expression::Integer(5))),
+    Some(Box::new(Statement::Expression(Expression::Integer(1)))),
   ))];
 
   let result = visit(input);
 
-  assert_eq!(result, Object::Integer(1))
+  assert_eq!(result.content, Type::Integer(1))
 }
 
 #[test]
 fn visit_no_else() {
   let input = vec![Statement::Expression(Expression::If(
     Box::new(Expression::FALSE),
-    vec![Statement::Expression(Expression::Integer(5))],
+    Box::new(Statement::Expression(Expression::Integer(5))),
     None,
   ))];
 
   let result = visit(input);
 
-  assert_eq!(result, Object::Null)
+  assert_eq!(result, Object::NULL)
 }
 
 #[test]
 fn visit_infix_plus() {
   let input = vec![Statement::Expression(Expression::Infix(
-    Infix::Plus,
+    Operator::Plus,
     Box::new(Expression::Integer(5)),
     Box::new(Expression::Integer(5)),
   ))];
 
   let result = visit(input);
 
-  assert_eq!(result, Object::Integer(10))
+  assert_eq!(result.content, Type::Integer(10))
 }
 
 #[test]
 fn visit_infix_greater_than() {
   let input = vec![Statement::Expression(Expression::Infix(
-    Infix::GreaterThan,
+    Operator::GreaterThan,
     Box::new(Expression::Integer(5)),
     Box::new(Expression::Integer(5)),
   ))];
@@ -291,7 +308,7 @@ fn visit_infix_greater_than() {
 #[test]
 fn visit_infix_less_than() {
   let input = vec![Statement::Expression(Expression::Infix(
-    Infix::LessThan,
+    Operator::LessThan,
     Box::new(Expression::Integer(1)),
     Box::new(Expression::Integer(2)),
   ))];
@@ -304,7 +321,7 @@ fn visit_infix_less_than() {
 #[test]
 fn visit_infix_equals_on_integer() {
   let input = vec![Statement::Expression(Expression::Infix(
-    Infix::Equals,
+    Operator::Equals,
     Box::new(Expression::Integer(5)),
     Box::new(Expression::Integer(5)),
   ))];
@@ -317,7 +334,7 @@ fn visit_infix_equals_on_integer() {
 #[test]
 fn visit_infix_not_equals_on_integer() {
   let input = vec![Statement::Expression(Expression::Infix(
-    Infix::NotEquals,
+    Operator::NotEquals,
     Box::new(Expression::Integer(5)),
     Box::new(Expression::Integer(5)),
   ))];
@@ -330,7 +347,7 @@ fn visit_infix_not_equals_on_integer() {
 #[test]
 fn visit_infix_not_equals_on_boolean() {
   let input = vec![Statement::Expression(Expression::Infix(
-    Infix::NotEquals,
+    Operator::NotEquals,
     Box::new(Expression::TRUE),
     Box::new(Expression::FALSE),
   ))];
@@ -343,7 +360,7 @@ fn visit_infix_not_equals_on_boolean() {
 #[test]
 fn visit_infix_equals_on_boolean() {
   let input = vec![Statement::Expression(Expression::Infix(
-    Infix::Equals,
+    Operator::Equals,
     Box::new(Expression::TRUE),
     Box::new(Expression::FALSE),
   ))];
@@ -356,58 +373,58 @@ fn visit_infix_equals_on_boolean() {
 #[test]
 fn visit_infix_minus() {
   let input = vec![Statement::Expression(Expression::Infix(
-    Infix::Minus,
+    Operator::Minus,
     Box::new(Expression::Integer(5)),
     Box::new(Expression::Integer(5)),
   ))];
 
   let result = visit(input);
 
-  assert_eq!(result, Object::Integer(0))
+  assert_eq!(result.content, Type::Integer(0))
 }
 
 #[test]
 fn visit_infix_multiply() {
   let input = vec![Statement::Expression(Expression::Infix(
-    Infix::Asterisk,
+    Operator::Asterisk,
     Box::new(Expression::Integer(5)),
     Box::new(Expression::Integer(5)),
   ))];
 
   let result = visit(input);
 
-  assert_eq!(result, Object::Integer(25))
+  assert_eq!(result.content, Type::Integer(25))
 }
 
 #[test]
 fn visit_infix_divide() {
   let input = vec![Statement::Expression(Expression::Infix(
-    Infix::Slash,
+    Operator::Slash,
     Box::new(Expression::Integer(10)),
     Box::new(Expression::Integer(2)),
   ))];
 
   let result = visit(input);
 
-  assert_eq!(result, Object::Integer(5))
+  assert_eq!(result.content, Type::Integer(5))
 }
 
 #[test]
 fn visit_minus() {
   let input = vec![Statement::Expression(Expression::Prefix(
-    Prefix::Minus,
+    Operator::Minus,
     Box::new(Expression::Integer(5)),
   ))];
 
   let result = visit(input);
 
-  assert_eq!(result, Object::Integer(-5))
+  assert_eq!(result.content, Type::Integer(-5))
 }
 
 #[test]
 fn visit_bang_on_boolean() {
   let input = vec![Statement::Expression(Expression::Prefix(
-    Prefix::Bang,
+    Operator::Bang,
     Box::new(Expression::TRUE),
   ))];
 
@@ -418,7 +435,7 @@ fn visit_bang_on_boolean() {
 #[test]
 fn visit_bang_on_integer() {
   let input = vec![Statement::Expression(Expression::Prefix(
-    Prefix::Bang,
+    Operator::Bang,
     Box::new(Expression::Integer(5)),
   ))];
 
@@ -429,8 +446,11 @@ fn visit_bang_on_integer() {
 #[test]
 fn visit_multiple_bangs() {
   let input = vec![Statement::Expression(Expression::Prefix(
-    Prefix::Bang,
-    Box::new(Expression::Prefix(Prefix::Bang, Box::new(Expression::TRUE))),
+    Operator::Bang,
+    Box::new(Expression::Prefix(
+      Operator::Bang,
+      Box::new(Expression::TRUE),
+    )),
   ))];
 
   let result = visit(input);
@@ -441,7 +461,7 @@ fn visit_multiple_bangs() {
 fn visit_integer_expression() {
   let input = vec![Statement::Expression(Expression::Integer(5))];
   let result = visit(input);
-  assert_eq!(result, Object::Integer(5))
+  assert_eq!(result.content, Type::Integer(5))
 }
 
 #[test]
@@ -449,10 +469,10 @@ fn visit_boolean_expression() {
   let input = vec![Statement::Expression(Expression::TRUE)];
 
   let result = visit(input);
-  assert_eq!(result, Object::Boolean(true))
+  assert_eq!(result, Object::new(Type::Boolean(true)))
 }
 
-fn visit(input: Block) -> Object {
+fn visit(input: Vec<Statement>) -> Object {
   let visitor = Visitor::new();
   let result = visitor.visit(&input);
 

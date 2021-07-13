@@ -1,113 +1,143 @@
-use crate::ast::Block;
-use crate::helpers::comma_separated;
-use crate::visitor::{Env, EvalError, Result};
+use super::Type;
+use crate::errors::EvalError;
 use std::fmt;
 
+type Result = std::result::Result<Object, EvalError>;
+
 #[derive(Debug, PartialEq, Clone)]
-pub enum Object {
-  Array(Vec<Object>),
-  Integer(i64),
-  String(String),
-  Boolean(bool),
-  Return(Box<Object>),
-  Function(Vec<String>, Block, Env),
-  BuiltIn(fn(Vec<Object>) -> Result),
-  Null,
+pub struct Object {
+  pub content: Type,
 }
 
 impl fmt::Display for Object {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "{}", self.as_string())
+    write!(f, "{}", self.content)
   }
 }
 
 impl Object {
-  pub const TRUE: Object = Object::Boolean(true);
-  pub const FALSE: Object = Object::Boolean(false);
+  pub const TRUE: Object = Object::new(Type::Boolean(true));
+  pub const FALSE: Object = Object::new(Type::Boolean(false));
+  pub const NULL: Object = Object::new(Type::Null);
 
-  fn as_string(&self) -> String {
-    match self {
-      Self::Integer(value) => value.to_string(),
-      Self::Boolean(value) => value.to_string(),
-      Self::String(value) => value.clone(),
-      Self::Return(obj) => obj.as_string(),
-      Self::Function(args, ..) => format!("fn({})", comma_separated(args)),
-      Self::BuiltIn(..) => format!("builtin fn()"),
-      Self::Array(array) => format!("[{}]", comma_separated(array)),
-      Self::Null => String::from("null"),
-    }
+  pub const fn new(content: Type) -> Self {
+    Object { content }
   }
 
-  pub fn not(self) -> Object {
-    match self {
-      Object::Boolean(true) => Object::FALSE,
-      Object::Boolean(false) | Object::Null => Object::TRUE,
+  pub fn not(&self) -> Object {
+    match self.content {
+      Type::Boolean(true) => Object::FALSE,
+      Type::Boolean(false) | Type::Null => Object::TRUE,
       _ => Object::FALSE,
     }
   }
 
-  pub fn negative(self) -> Result {
-    match self {
-      Object::Integer(value) => Ok(Object::Integer(-value)),
+  pub fn negative(&self) -> Result {
+    match self.content {
+      Type::Integer(value) => Ok(Object::new(Type::Integer(-value))),
       _ => Err(EvalError::UnknownOperator(
         Box::new(String::from("-")),
-        self,
+        self.clone(),
       )),
     }
   }
 
-  pub fn add(self, obj: Object) -> Result {
-    Ok(match (self, obj) {
-      (Object::Integer(left), Object::Integer(right)) => Object::Integer(left + right),
-      (Object::String(left), Object::String(right)) => Object::String(left + &right),
-      (left, right) => return Err(EvalError::TypeMismatch(String::from("+"), left, right)),
+  pub fn add(&self, obj: Object) -> Result {
+    Ok(match (&self.content, &obj.content) {
+      (Type::Integer(left), Type::Integer(right)) => Object::new(Type::Integer(left + right)),
+      (Type::String(left), Type::String(right)) => Object::new(Type::String(left.clone() + right)),
+      (left, right) => {
+        return Err(EvalError::TypeMismatch(
+          String::from("+"),
+          left.clone(),
+          right.clone(),
+        ))
+      }
     })
   }
 
-  pub fn subtract(self, obj: Object) -> Result {
-    Ok(match (self, obj) {
-      (Object::Integer(left), Object::Integer(right)) => Object::Integer(left - right),
-      (left, right) => return Err(EvalError::TypeMismatch(String::from("-"), left, right)),
+  pub fn subtract(&self, obj: Object) -> Result {
+    Ok(match (&self.content, &obj.content) {
+      (Type::Integer(left), Type::Integer(right)) => Object::new(Type::Integer(left - right)),
+      (left, right) => {
+        return Err(EvalError::TypeMismatch(
+          String::from("*"),
+          left.clone(),
+          right.clone(),
+        ))
+      }
     })
   }
 
-  pub fn multiply(self, obj: Object) -> Result {
-    Ok(match (self, obj) {
-      (Object::Integer(left), Object::Integer(right)) => Object::Integer(left * right),
-      (left, right) => return Err(EvalError::TypeMismatch(String::from("*"), left, right)),
+  pub fn multiply(&self, obj: Object) -> Result {
+    Ok(match (&self.content, &obj.content) {
+      (Type::Integer(left), Type::Integer(right)) => Object::new(Type::Integer(left * right)),
+      (left, right) => {
+        return Err(EvalError::TypeMismatch(
+          String::from("/"),
+          left.clone(),
+          right.clone(),
+        ))
+      }
     })
   }
 
-  pub fn divide(self, obj: Object) -> Result {
-    Ok(match (self, obj) {
-      (Object::Integer(left), Object::Integer(right)) => Object::Integer(left / right),
-      (left, right) => return Err(EvalError::TypeMismatch(String::from("/"), left, right)),
+  pub fn divide(&self, obj: Object) -> Result {
+    Ok(match (&self.content, &obj.content) {
+      (Type::Integer(left), Type::Integer(right)) => Object::new(Type::Integer(left / right)),
+      (left, right) => {
+        return Err(EvalError::TypeMismatch(
+          String::from("/"),
+          left.clone(),
+          right.clone(),
+        ))
+      }
     })
   }
 
-  pub fn greater_than(self, obj: Object) -> Result {
-    Ok(match (self, obj) {
-      (Object::Integer(left), Object::Integer(right)) => {
+  pub fn greater_than(&self, obj: Object) -> Result {
+    Ok(match (&self.content, &obj.content) {
+      (Type::Integer(left), Type::Integer(right)) => {
         if left > right {
           Object::TRUE
         } else {
           Object::FALSE
         }
       }
-      (left, right) => return Err(EvalError::TypeMismatch(String::from(">"), left, right)),
+      (left, right) => {
+        return Err(EvalError::TypeMismatch(
+          String::from(">"),
+          left.clone(),
+          right.clone(),
+        ))
+      }
     })
   }
 
-  pub fn less_than(self, obj: Object) -> Result {
-    Ok(match (self, obj) {
-      (Object::Integer(left), Object::Integer(right)) => {
+  pub fn less_than(&self, obj: Object) -> Result {
+    Ok(match (&self.content, &obj.content) {
+      (Type::Integer(left), Type::Integer(right)) => {
         if left < right {
           Object::TRUE
         } else {
           Object::FALSE
         }
       }
-      (left, right) => return Err(EvalError::TypeMismatch(String::from("<"), left, right)),
+      (left, right) => {
+        return Err(EvalError::TypeMismatch(
+          String::from("<"),
+          left.clone(),
+          right.clone(),
+        ))
+      }
     })
+  }
+
+  pub fn is_truthy(&self) -> bool {
+    !self.is_falsy()
+  }
+
+  pub fn is_falsy(&self) -> bool {
+    self == &Object::NULL || self == &Object::FALSE
   }
 }

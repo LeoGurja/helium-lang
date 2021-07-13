@@ -1,3 +1,4 @@
+use super::Operator;
 use std::fmt;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -12,16 +13,7 @@ pub enum Token {
   String(String),
 
   // Operators
-  Assign,
-  Plus,
-  Minus,
-  Bang,
-  Asterisk,
-  Slash,
-  LessThan,
-  GreaterThan,
-  Equals,
-  NotEquals,
+  Operator(Operator),
 
   // Delimiters
   Comma,
@@ -42,6 +34,9 @@ pub enum Token {
   If,
   Else,
   Return,
+  For,
+  While,
+  In,
 }
 
 impl std::default::Default for Token {
@@ -52,10 +47,14 @@ impl std::default::Default for Token {
 
 impl fmt::Display for Token {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    let string;
     write!(
       f,
       "'{}'",
       match self {
+        Self::For => "for",
+        Self::In => "in",
+        Self::While => "while",
         Self::Let => "let",
         Self::If => "if",
         Self::Else => "else",
@@ -69,20 +68,14 @@ impl fmt::Display for Token {
         Self::RightParen => ")",
         Self::RightBrace => "}",
         Self::RightBracket => "]",
-        Self::Assign => "=",
-        Self::Asterisk => "*",
-        Self::Bang => "!",
         Self::Comma => ",",
         Self::Eof => "EOF",
-        Self::GreaterThan => ">",
-        Self::LessThan => "<",
-        Self::Equals => "==",
-        Self::Slash => "/",
-        Self::Plus => "+",
-        Self::Minus => "-",
         Self::Illegal => "illegal",
+        Self::Operator(operator) => {
+          string = operator.to_string();
+          &string
+        }
         Self::Integer(value) | Self::Id(value) | Self::String(value) => value,
-        Self::NotEquals => "!=",
         Self::Semicolon => ";",
       }
     )
@@ -99,6 +92,9 @@ impl Token {
       "return" => Token::Return,
       "true" => Token::True,
       "false" => Token::False,
+      "for" => Token::For,
+      "while" => Token::While,
+      "in" => Token::In,
       _ => Token::Id(id.to_owned()),
     }
   }

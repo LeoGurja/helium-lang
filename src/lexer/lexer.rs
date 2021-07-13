@@ -1,4 +1,4 @@
-use super::token::Token;
+use crate::token::{Operator, Token};
 use std::cell::{Cell, RefCell};
 use std::iter::Peekable;
 use std::mem;
@@ -29,15 +29,6 @@ impl Lexer {
     let current = self.current.get();
 
     let token = match current {
-      '=' => {
-        if self.peek() == '=' {
-          self.advance();
-          Token::Equals
-        } else {
-          Token::Assign
-        }
-      }
-      '"' | '\'' => self.collect_string(),
       ';' => Token::Semicolon,
       '(' => Token::LeftParen,
       ')' => Token::RightParen,
@@ -46,33 +37,51 @@ impl Lexer {
       '{' => Token::LeftBrace,
       '}' => Token::RightBrace,
       ',' => Token::Comma,
-      '+' => Token::Plus,
-      '-' => Token::Minus,
-      '/' => Token::Slash,
-      '*' => Token::Asterisk,
-      '!' => {
-        if self.peek() == '=' {
-          self.advance();
-          Token::NotEquals
-        } else {
-          Token::Bang
-        }
-      }
-      '<' => Token::LessThan,
-      '>' => Token::GreaterThan,
+      '"' | '\'' => self.collect_string(),
       '\0' => Token::Eof,
-      _ => {
-        if current.is_alphabetic() || current == '_' {
-          return self.collect_id();
-        } else if current.is_numeric() {
-          return self.collect_number();
-        } else {
-          Token::Illegal
+      _ => match self.try_collect_operator(current) {
+        Some(operator) => operator,
+        None => {
+          if current.is_alphabetic() || current == '_' {
+            return self.collect_id();
+          } else if current.is_numeric() {
+            return self.collect_number();
+          } else {
+            Token::Illegal
+          }
         }
-      }
+      },
     };
     self.advance();
     token
+  }
+
+  fn try_collect_operator(&self, current: char) -> Option<Token> {
+    Some(Token::Operator(match current {
+      '=' => {
+        if self.peek() == '=' {
+          self.advance();
+          Operator::Equals
+        } else {
+          Operator::Assign
+        }
+      }
+      '+' => Operator::Plus,
+      '-' => Operator::Minus,
+      '/' => Operator::Slash,
+      '*' => Operator::Asterisk,
+      '!' => {
+        if self.peek() == '=' {
+          self.advance();
+          Operator::NotEquals
+        } else {
+          Operator::Bang
+        }
+      }
+      '<' => Operator::LessThan,
+      '>' => Operator::GreaterThan,
+      _ => return None,
+    }))
   }
 
   fn collect_string(&self) -> Token {

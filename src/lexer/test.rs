@@ -1,4 +1,61 @@
 use super::*;
+use crate::token::{Operator, Token};
+
+#[test]
+fn while_loops() {
+  let input = String::from("let x = 0; while x < 10 { x = x + 1 }");
+
+  let expected = vec![
+    Token::Let,
+    Token::Id(String::from("x")),
+    Token::Operator(Operator::Assign),
+    Token::Integer(String::from("0")),
+    Token::Semicolon,
+    Token::While,
+    Token::Id(String::from("x")),
+    Token::Operator(Operator::LessThan),
+    Token::Integer(String::from("10")),
+    Token::LeftBrace,
+    Token::Id(String::from("x")),
+    Token::Operator(Operator::Assign),
+    Token::Id(String::from("x")),
+    Token::Operator(Operator::Plus),
+    Token::Integer(String::from("1")),
+    Token::RightBrace,
+    Token::Eof,
+  ];
+
+  compare(input, expected)
+}
+
+#[test]
+fn for_loops() {
+  let input = String::from("for a in [1,2,3] { let x = a + 1 }");
+
+  let expected = vec![
+    Token::For,
+    Token::Id(String::from("a")),
+    Token::In,
+    Token::LeftBracket,
+    Token::Integer(String::from("1")),
+    Token::Comma,
+    Token::Integer(String::from("2")),
+    Token::Comma,
+    Token::Integer(String::from("3")),
+    Token::RightBracket,
+    Token::LeftBrace,
+    Token::Let,
+    Token::Id(String::from("x")),
+    Token::Operator(Operator::Assign),
+    Token::Id(String::from("a")),
+    Token::Operator(Operator::Plus),
+    Token::Integer(String::from("1")),
+    Token::RightBrace,
+    Token::Eof,
+  ];
+
+  compare(input, expected)
+}
 
 #[test]
 fn array_indexes() {
@@ -64,11 +121,11 @@ fn multichar_operators() {
 
   let expected = vec![
     Token::Integer(String::from("10")),
-    Token::Equals,
+    Token::Operator(Operator::Equals),
     Token::Integer(String::from("10")),
     Token::Semicolon,
     Token::Integer(String::from("10")),
-    Token::NotEquals,
+    Token::Operator(Operator::NotEquals),
     Token::Integer(String::from("9")),
     Token::Semicolon,
     Token::Eof,
@@ -91,7 +148,7 @@ fn keywords() {
     Token::If,
     Token::LeftParen,
     Token::Integer(String::from("5")),
-    Token::LessThan,
+    Token::Operator(Operator::LessThan),
     Token::Integer(String::from("10")),
     Token::RightParen,
     Token::LeftBrace,
@@ -119,16 +176,16 @@ fn operators() {
   );
 
   let expected_tokens = vec![
-    Token::Bang,
-    Token::Minus,
-    Token::Slash,
-    Token::Asterisk,
+    Token::Operator(Operator::Bang),
+    Token::Operator(Operator::Minus),
+    Token::Operator(Operator::Slash),
+    Token::Operator(Operator::Asterisk),
     Token::Integer(String::from("5")),
     Token::Semicolon,
     Token::Integer(String::from("5")),
-    Token::LessThan,
+    Token::Operator(Operator::LessThan),
     Token::Integer(String::from("10")),
-    Token::GreaterThan,
+    Token::Operator(Operator::GreaterThan),
     Token::Integer(String::from("5")),
     Token::Semicolon,
     Token::Eof,
@@ -155,17 +212,17 @@ fn code() {
   let expected_tokens = vec![
     Token::Let,
     Token::Id(String::from("five")),
-    Token::Assign,
+    Token::Operator(Operator::Assign),
     Token::Integer(String::from("5")),
     Token::Semicolon,
     Token::Let,
     Token::Id(String::from("ten")),
-    Token::Assign,
+    Token::Operator(Operator::Assign),
     Token::Integer(String::from("10")),
     Token::Semicolon,
     Token::Let,
     Token::Id(String::from("add")),
-    Token::Assign,
+    Token::Operator(Operator::Assign),
     Token::Function,
     Token::LeftParen,
     Token::Id(String::from("x")),
@@ -174,14 +231,14 @@ fn code() {
     Token::RightParen,
     Token::LeftBrace,
     Token::Id(String::from("x")),
-    Token::Plus,
+    Token::Operator(Operator::Plus),
     Token::Id(String::from("y")),
     Token::Semicolon,
     Token::RightBrace,
     Token::Semicolon,
     Token::Let,
     Token::Id(String::from("result")),
-    Token::Assign,
+    Token::Operator(Operator::Assign),
     Token::Id(String::from("add")),
     Token::LeftParen,
     Token::Id(String::from("five")),
@@ -200,8 +257,8 @@ fn symbols() {
   let input = String::from("=+(){},;");
 
   let expected_tokens = vec![
-    Token::Assign,
-    Token::Plus,
+    Token::Operator(Operator::Assign),
+    Token::Operator(Operator::Plus),
     Token::LeftParen,
     Token::RightParen,
     Token::LeftBrace,

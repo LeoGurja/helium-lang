@@ -1,5 +1,7 @@
+use crate::errors::EvalError;
 use crate::object::Object;
-use crate::visitor::EvalError;
+
+pub type Result = std::result::Result<Object, EvalError>;
 
 pub fn type_error(expected: &str, got: &Object) -> EvalError {
   EvalError::TypeError(expected.to_owned(), got.clone())

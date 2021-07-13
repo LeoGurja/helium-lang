@@ -1,19 +1,18 @@
-use crate::object::Object;
+use crate::object::{Object, Type};
 use std::fmt;
 
 pub trait UnwrappedPrintable: fmt::Debug + fmt::Display {}
 impl<T: fmt::Debug + fmt::Display> UnwrappedPrintable for T {}
 
 type Printable = Box<dyn UnwrappedPrintable>;
-pub type Result = std::result::Result<Object, EvalError>;
 
 #[derive(Debug)]
 pub enum EvalError {
-  TypeMismatch(String, Object, Object),
+  TypeMismatch(String, Type, Type),
   UnknownOperator(Printable, Object),
   UndefinedVariable(String),
   WrongParameters(usize, usize),
-  CallError(String),
+  CallError(Object),
   TypeError(String, Object),
   IndexError(Object, Object),
 }

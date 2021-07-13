@@ -1,17 +1,22 @@
-use crate::lexer::Token;
+use crate::ast::Expression;
+use crate::token::Token;
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ParserError {
   UnexpectedToken(Token, Token),
   ExpectedExpression(Token),
   ExpectedPrefix(Token),
   ParsingError(String, String),
+  ExpectedId(Expression),
 }
 
 impl fmt::Display for ParserError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
+      Self::ExpectedId(got) => {
+        write!(f, "ExpectedId:\n\tExpected an id, got {} instead", got)
+      }
       Self::UnexpectedToken(expected, got) => {
         write!(
           f,

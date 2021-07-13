@@ -1,37 +1,17 @@
-use crate::lexer::Lexer;
-use crate::parser::{Parser, ParserError};
-use crate::visitor::Visitor;
-use std::cell::Ref;
+use crate::helium;
 use std::io;
 use std::io::Write;
 
 pub fn repl() {
   print_welcome();
-  let visitor = Visitor::new();
-  let mut parser;
-  let mut program;
-  let mut result;
 
   loop {
-    parser = Parser::new(Lexer::new(ask_input(">> ")));
-    program = parser.parse();
-    let errors = parser.errors.borrow();
-    if errors.len() != 0 {
-      print_errors(errors);
-      continue;
-    }
-    println!("{:?}", program);
-    result = visitor.visit(&program);
+    let result = helium::run(ask_input(">> "));
+
     match result {
       Ok(obj) => println!("{}", obj),
       Err(err) => println!("{}", err),
     }
-  }
-}
-
-fn print_errors(errors: Ref<'_, Vec<ParserError>>) {
-  for error in errors.iter() {
-    println!("{}", error)
   }
 }
 

@@ -1,6 +1,6 @@
-use super::block::Block;
-use super::operators::{Infix, Prefix};
+use super::Statement;
 use crate::helpers::comma_separated;
+use crate::token::Operator;
 use std::fmt;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -9,12 +9,13 @@ pub enum Expression {
   Integer(i64),
   String(String),
   Boolean(bool),
-  Call(String, Vec<Expression>),
-  Prefix(Prefix, Box<Expression>),
-  Infix(Infix, Box<Expression>, Box<Expression>),
-  If(Box<Expression>, Block, Option<Block>),
-  Function(Option<String>, Vec<String>, Block),
+  Call(Box<Expression>, Vec<Expression>),
+  Prefix(Operator, Box<Expression>),
+  Infix(Operator, Box<Expression>, Box<Expression>),
+  If(Box<Expression>, Box<Statement>, Option<Box<Statement>>),
+  Function(Option<String>, Vec<String>, Box<Statement>),
   Array(Vec<Expression>),
+  Index(Box<Expression>, Box<Expression>),
 }
 
 impl Expression {
@@ -25,6 +26,9 @@ impl Expression {
 impl fmt::Display for Expression {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
+      Expression::Index(indexed, indexer) => {
+        write!(f, "{}[{}]", indexed, indexer)
+      }
       Expression::Array(values) => {
         write!(f, "[{}]", comma_separated(values))
       }
@@ -43,11 +47,7 @@ impl fmt::Display for Expression {
       Expression::Boolean(value) => write!(f, "{}", value),
       Expression::Prefix(operator, exp) => write!(f, "({}{})", operator, exp),
       Expression::Infix(operator, left, right) => {
-        if &Infix::Index == operator {
-          write!(f, "({}[{}])", left, right)
-        } else {
-          write!(f, "({} {} {})", left, operator, right)
-        }
+        write!(f, "({} {} {})", left, operator, right)
       }
       Expression::If(condition, ..) => {
         write!(f, "if({})", condition)
