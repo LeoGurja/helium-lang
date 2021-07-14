@@ -1,5 +1,4 @@
 use super::Operator;
-use std::fmt;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
@@ -38,50 +37,6 @@ pub enum Token {
   For,
   While,
   In,
-}
-
-impl std::default::Default for Token {
-  fn default() -> Self {
-    Token::Eof
-  }
-}
-
-impl fmt::Display for Token {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    let string;
-    write!(
-      f,
-      "'{}'",
-      match self {
-        Self::Colon => ":",
-        Self::For => "for",
-        Self::In => "in",
-        Self::While => "while",
-        Self::Let => "let",
-        Self::If => "if",
-        Self::Else => "else",
-        Self::Return => "return",
-        Self::True => "true",
-        Self::False => "false",
-        Self::Function => "fn",
-        Self::LeftParen => "(",
-        Self::LeftBrace => "{",
-        Self::LeftBracket => "[",
-        Self::RightParen => ")",
-        Self::RightBrace => "}",
-        Self::RightBracket => "]",
-        Self::Comma => ",",
-        Self::Eof => "EOF",
-        Self::Illegal => "illegal",
-        Self::Operator(operator) => {
-          string = operator.to_string();
-          &string
-        }
-        Self::Integer(value) | Self::Id(value) | Self::String(value) => value,
-        Self::Semicolon => ";",
-      }
-    )
-  }
 }
 
 impl Token {
