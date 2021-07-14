@@ -55,8 +55,8 @@ impl Visitor {
     let array = self.visit_expression(iterable)?;
     let mut evaluated = Object::Null;
     if let Object::Array(arr) = array {
-      for i in arr {
-        self.env.borrow_mut().set(variable, i);
+      for i in &*arr.borrow() {
+        self.env.borrow_mut().set(variable, i.clone());
         evaluated = self.visit_statement(block)?;
       }
       Ok(evaluated)
@@ -90,7 +90,9 @@ impl Visitor {
     match &expression {
       Expression::Hash(hash) => self.visit_hash(hash),
       Expression::Index(indexed, indexer) => self.visit_index(indexed, indexer),
-      Expression::Array(expressions) => Ok(Object::Array(self.visit_expressions(expressions)?)),
+      Expression::Array(expressions) => Ok(Object::Array(Rc::new(RefCell::new(
+        self.visit_expressions(expressions)?,
+      )))),
       Expression::Boolean(value) => Ok(Object::from(*value)),
       Expression::Integer(value) => Ok(Object::Integer(*value)),
       Expression::Call(function, args) => self.visit_call(function, args),
@@ -108,11 +110,13 @@ impl Visitor {
   fn visit_index(&self, left: &Expression, right: &Expression) -> Result {
     Ok(
       match (self.visit_expression(left)?, self.visit_expression(right)?) {
-        (Object::Array(arr), Object::Integer(idx)) => {
-          arr.get(idx as usize).unwrap_or(&Object::Null).clone()
-        }
+        (Object::Array(arr), Object::Integer(idx)) => arr
+          .borrow()
+          .get(idx as usize)
+          .unwrap_or(&Object::Null)
+          .clone(),
         (Object::Hash(hash), Object::String(string)) => {
-          hash.get(&string).unwrap_or(&Object::Null).clone()
+          hash.borrow().get(&string).unwrap_or(&Object::Null).clone()
         }
         (left, right) => return Err(Error::IndexError(left, right)),
       },
@@ -131,7 +135,7 @@ impl Visitor {
       hash.insert(key, self.visit_expression(&value_expression)?);
     }
 
-    Ok(Object::Hash(hash))
+    Ok(Object::Hash(Rc::new(RefCell::new(hash))))
   }
 
   fn visit_call(&self, function: &Expression, arg_values: &Vec<Expression>) -> Result {
@@ -230,6 +234,7 @@ impl Visitor {
           self.env.borrow_mut().update(id, right.clone());
           right
         }
+        Expression::Index(indexed, index) => self.visit_index_assign(indexed, index, right)?,
         _ => return Err(Error::CannotAssign(left)),
       },
       Operator::Plus => left + right,
@@ -242,6 +247,28 @@ impl Visitor {
       Operator::Slash => left / right,
       _ => return Err(Error::UnknownOperator(infix.clone(), left)),
     })
+  }
+
+  fn visit_index_assign(
+    &self,
+    indexed: &Box<Expression>,
+    index: &Box<Expression>,
+    value: Object,
+  ) -> Result {
+    match (
+      self.visit_expression(indexed)?,
+      self.visit_expression(index)?,
+    ) {
+      (Object::Array(arr), Object::Integer(int)) => {
+        arr.borrow_mut()[int as usize] = value.clone();
+        Ok(value)
+      }
+      (Object::Hash(hash), Object::String(string)) => {
+        hash.borrow_mut().insert(string, value.clone());
+        Ok(value)
+      }
+      (left, right) => Err(Error::IndexError(left, right)),
+    }
   }
 
   fn visit_prefix(&self, prefix: &Operator, expression: &Expression) -> Result {

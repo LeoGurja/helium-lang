@@ -2,7 +2,9 @@ use super::*;
 use crate::ast::{Expression, Statement};
 use crate::object::Object;
 use crate::token::Operator;
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 #[test]
 fn visit_hash_index() {
@@ -50,7 +52,7 @@ fn visit_hash() {
 
   let result = visit(input);
 
-  assert_eq!(result, Object::Hash(expected))
+  assert_eq!(result, Object::Hash(Rc::new(RefCell::new(expected))))
 }
 
 #[test]
@@ -165,7 +167,10 @@ fn visit_array() {
   let result = visit(input);
   assert_eq!(
     result,
-    Object::Array(vec![Object::String(String::from("x")), Object::Integer(1)])
+    Object::Array(Rc::new(RefCell::new(vec![
+      Object::String(String::from("x")),
+      Object::Integer(1)
+    ])))
   )
 }
 

@@ -11,7 +11,7 @@ use std::rc::Rc;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Object {
-  Array(Vec<Object>),
+  Array(Rc<RefCell<Vec<Object>>>),
   Error(Box<Error>),
   Integer(i64),
   String(String),
@@ -19,7 +19,7 @@ pub enum Object {
   Return(Box<Object>),
   Function(Vec<String>, Statement, Rc<RefCell<Env>>),
   BuiltIn(fn(Vec<Object>) -> Result<Object, Error>),
-  Hash(HashMap<String, Object>),
+  Hash(Rc<RefCell<HashMap<String, Object>>>),
   Null,
 }
 
@@ -30,14 +30,14 @@ impl fmt::Display for Object {
       "{}",
       match self {
         Self::Error(err) => format!("{}", *err),
-        Self::Hash(hash) => format!("{:?}", hash),
+        Self::Hash(hash) => format!("{:?}", &hash.borrow()),
         Self::Integer(value) => value.to_string(),
         Self::Boolean(value) => value.to_string(),
         Self::String(value) => value.clone(),
         Self::Return(obj) => obj.to_string(),
         Self::Function(args, ..) => format!("fn({})", comma_separated(args)),
         Self::BuiltIn(..) => format!("builtin fn()"),
-        Self::Array(array) => format!("[{}]", comma_separated(array)),
+        Self::Array(array) => format!("[{}]", comma_separated(&array.borrow())),
         Self::Null => String::from("null"),
       }
     )

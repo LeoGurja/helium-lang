@@ -1,5 +1,7 @@
 use crate::helium;
 use crate::object::Object;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 #[test]
 fn book_name() {
@@ -55,13 +57,13 @@ fn fibonacci() {
 
   assert_eq!(
     result,
-    Object::Array(vec![
+    Object::Array(Rc::new(RefCell::new(vec![
       Object::Integer(1),
       Object::Integer(1),
       Object::Integer(2),
       Object::Integer(3),
       Object::Integer(5),
       Object::Integer(8)
-    ])
+    ])))
   )
 }

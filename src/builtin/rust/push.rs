@@ -1,15 +1,17 @@
 use super::helpers::validate_params;
 use crate::error::Error;
 use crate::object::Object;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 pub fn push(args: Vec<Object>) -> Result<Object, Error> {
-  validate_params(&args, 2);
+  validate_params(&args, 2)?;
 
   match &args[0] {
     Object::Array(array) => {
-      let mut new_array = array.clone();
+      let mut new_array = array.borrow().clone();
       new_array.push(args[1].clone());
-      Ok(Object::Array(new_array))
+      Ok(Object::Array(Rc::new(RefCell::new(new_array))))
     }
     Object::String(string) => {
       let mut new_string = string.clone();
