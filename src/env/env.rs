@@ -38,13 +38,13 @@ impl Env {
     }
   }
 
-  pub fn update(&mut self, key: &str, value: Object) -> Result<(), Error> {
+  pub fn update(&mut self, key: &str, value: Object) {
     if self.store.contains_key(key) {
-      Ok(self.set(key, value))
+      self.set(key, value)
     } else {
       match &self.parent {
         Some(parent) => parent.borrow_mut().update(key, value),
-        None => Err(Error::UndefinedVariable(key.to_owned())),
+        None => Error::UndefinedVariable(key.to_owned()).raise(),
       }
     }
   }

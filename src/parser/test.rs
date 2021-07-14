@@ -1,6 +1,5 @@
 use super::parser::*;
 use crate::ast::{Expression, Statement};
-use crate::error::Error;
 use crate::lexer::Lexer;
 use crate::token::Operator;
 
@@ -524,10 +523,7 @@ fn if_block() {
 
 #[test]
 fn semicolons() {
-  compare(
-    parse(String::from("1 + 1;")),
-    to_block(parse(String::from("1 + 1"))),
-  )
+  compare(parse(String::from("1 + 1;")), parse(String::from("1 + 1")))
 }
 
 #[test]
@@ -573,27 +569,22 @@ fn precedence() {
   ];
 
   for (actual, expected) in inputs {
-    compare(
-      parse(String::from(actual)),
-      to_block(parse(String::from(expected))),
-    );
+    compare(parse(String::from(actual)), parse(String::from(expected)));
   }
 }
 
-fn parse(input: String) -> Result<Vec<Statement>, Vec<Error>> {
+fn parse(input: String) -> Vec<Statement> {
   let mut parser = Parser::new(Lexer::new(input));
-  parser.parse()
-}
+  let program = parser.parse();
 
-fn compare(program: Result<Vec<Statement>, Vec<Error>>, expected: Vec<Statement>) {
-  for (a, b) in to_block(program).iter().zip(expected.iter()) {
-    assert_eq!(a, b)
+  for err in parser.errors {
+    println!("{}", err);
   }
+  program
 }
 
-fn to_block(program: Result<Vec<Statement>, Vec<Error>>) -> Vec<Statement> {
-  match program {
-    Ok(p) => p,
-    Err(e) => panic!("Parser has errors:\n\t{:?}", e),
+fn compare(program: Vec<Statement>, expected: Vec<Statement>) {
+  for (a, b) in program.iter().zip(expected.iter()) {
+    assert_eq!(a, b)
   }
 }

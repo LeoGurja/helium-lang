@@ -7,7 +7,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-pub type Result = std::result::Result<Object, Error>;
+type Result = std::result::Result<Object, Error>;
 
 pub struct Visitor {
   pub env: Rc<RefCell<Env>>,
@@ -87,26 +87,36 @@ impl Visitor {
   }
 
   fn visit_expression(&self, expression: &Expression) -> Result {
-    Ok(match &expression {
-      Expression::Hash(hash) => self.visit_hash(hash)?,
-      Expression::Index(indexed, indexer) => {
-        self.visit_expression(indexed)?[self.visit_expression(indexer)?].clone()
-      }
-      Expression::Array(expressions) => Object::Array(self.visit_expressions(expressions)?),
-      Expression::Boolean(value) => Object::from(*value),
-      Expression::Integer(value) => Object::Integer(*value),
-      Expression::Call(function, args) => self.visit_call(function, args)?,
-      Expression::Function(name, args, block) => {
-        self.visit_function_declaration(name, args, block)?
-      }
-      Expression::Id(name) => self.visit_variable(&name)?,
+    match &expression {
+      Expression::Hash(hash) => self.visit_hash(hash),
+      Expression::Index(indexed, indexer) => self.visit_index(indexed, indexer),
+      Expression::Array(expressions) => Ok(Object::Array(self.visit_expressions(expressions)?)),
+      Expression::Boolean(value) => Ok(Object::from(*value)),
+      Expression::Integer(value) => Ok(Object::Integer(*value)),
+      Expression::Call(function, args) => self.visit_call(function, args),
+      Expression::Function(name, args, block) => self.visit_function_declaration(name, args, block),
+      Expression::Id(name) => self.visit_variable(&name),
       Expression::If(condition, consequence, alternative) => {
-        self.visit_if(condition, consequence, alternative)?
+        self.visit_if(condition, consequence, alternative)
       }
-      Expression::Infix(infix, left, right) => self.visit_infix(infix, left, right)?,
-      Expression::Prefix(prefix, expression) => self.visit_prefix(prefix, expression)?,
-      Expression::String(value) => Object::String(value.clone()),
-    })
+      Expression::Infix(infix, left, right) => self.visit_infix(infix, left, right),
+      Expression::Prefix(prefix, expression) => self.visit_prefix(prefix, expression),
+      Expression::String(value) => Ok(Object::String(value.clone())),
+    }
+  }
+
+  fn visit_index(&self, left: &Expression, right: &Expression) -> Result {
+    Ok(
+      match (self.visit_expression(left)?, self.visit_expression(right)?) {
+        (Object::Array(arr), Object::Integer(idx)) => {
+          arr.get(idx as usize).unwrap_or(&Object::Null).clone()
+        }
+        (Object::Hash(hash), Object::String(string)) => {
+          hash.get(&string).unwrap_or(&Object::Null).clone()
+        }
+        (left, right) => return Err(Error::IndexError(left, right)),
+      },
+    )
   }
 
   fn visit_hash(&self, key_values: &Vec<(Expression, Expression)>) -> Result {
@@ -217,10 +227,10 @@ impl Visitor {
     Ok(match infix {
       Operator::Assign => match left_expression {
         Expression::Id(id) => {
-          self.env.borrow_mut().update(id, right.clone())?;
+          self.env.borrow_mut().update(id, right.clone());
           right
         }
-        _ => panic!("{}", Error::CannotAssign(left)),
+        _ => return Err(Error::CannotAssign(left)),
       },
       Operator::Plus => left + right,
       Operator::Asterisk => left * right,
@@ -236,10 +246,10 @@ impl Visitor {
 
   fn visit_prefix(&self, prefix: &Operator, expression: &Expression) -> Result {
     let obj = self.visit_expression(expression)?;
-    match prefix {
-      Operator::Bang => Ok(!obj),
-      Operator::Minus => Ok(-obj),
-      _ => Err(Error::UnknownOperator(prefix.clone(), obj.clone())),
-    }
+    Ok(match prefix {
+      Operator::Bang => !obj,
+      Operator::Minus => -obj,
+      _ => return Err(Error::UnknownOperator(prefix.clone(), obj.clone())),
+    })
   }
 }

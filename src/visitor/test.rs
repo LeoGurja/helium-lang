@@ -585,10 +585,5 @@ fn visit_boolean_expression() {
 
 fn visit(input: Vec<Statement>) -> Object {
   let visitor = Visitor::new();
-  let result = visitor.visit(&input);
-
-  match result {
-    Err(err) => panic!("visitor returned error: {}", err),
-    Ok(value) => value,
-  }
+  visitor.visit(&input).unwrap()
 }

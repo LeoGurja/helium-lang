@@ -72,18 +72,16 @@ fn print() {
 
 fn visit(input: String) -> Object {
   let visitor = Visitor::new();
-  let result = visitor.visit(&parse(Parser::new(Lexer::new(input))));
-
-  match result {
-    Err(err) => panic!("visitor returned error: {}", err),
-    Ok(value) => value,
-  }
+  visitor
+    .visit(&parse(Parser::new(Lexer::new(input))))
+    .unwrap()
 }
 
 fn parse(mut parser: Parser) -> Vec<Statement> {
   let program = parser.parse();
-  match program {
-    Ok(block) => block,
-    Err(errs) => panic!("Parser has errors:\n\t{:?}", errs),
+
+  for err in parser.errors {
+    println!("{}", err);
   }
+  program
 }

@@ -9,7 +9,7 @@ type Result<T> = std::result::Result<T, Error>;
 pub struct Parser {
   lexer: Lexer,
   current: Cell<Token>,
-  errors: Vec<Error>,
+  pub errors: Vec<Error>,
 }
 
 impl Parser {
@@ -21,7 +21,7 @@ impl Parser {
     }
   }
 
-  pub fn parse(&mut self) -> std::result::Result<Vec<Statement>, Vec<Error>> {
+  pub fn parse(&mut self) -> Vec<Statement> {
     let mut block = vec![];
 
     loop {
@@ -32,11 +32,7 @@ impl Parser {
       }
     }
 
-    if self.errors.len() != 0 {
-      Err(self.errors.clone())
-    } else {
-      Ok(block)
-    }
+    block
   }
 
   fn parse_block(&mut self) -> Result<Statement> {

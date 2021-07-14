@@ -9,17 +9,16 @@ use std::fmt;
 use std::ops;
 use std::rc::Rc;
 
-type Result = std::result::Result<Object, Error>;
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum Object {
   Array(Vec<Object>),
+  Error(Box<Error>),
   Integer(i64),
   String(String),
   Boolean(bool),
   Return(Box<Object>),
   Function(Vec<String>, Statement, Rc<RefCell<Env>>),
-  BuiltIn(fn(Vec<Object>) -> Result),
+  BuiltIn(fn(Vec<Object>) -> Result<Object, Error>),
   Hash(HashMap<String, Object>),
   Null,
 }
@@ -30,6 +29,7 @@ impl fmt::Display for Object {
       f,
       "{}",
       match self {
+        Self::Error(err) => format!("{}", *err),
         Self::Hash(hash) => format!("{:?}", hash),
         Self::Integer(value) => value.to_string(),
         Self::Boolean(value) => value.to_string(),
@@ -51,10 +51,11 @@ impl ops::Add for Object {
     match (self, obj) {
       (Object::Integer(left), Object::Integer(right)) => Object::Integer(left + right),
       (Object::String(left), Object::String(right)) => Object::String(left.clone() + &right),
-      (left, right) => panic!(
-        "{}",
-        Error::TypeMismatch(String::from("+"), left.clone(), right.clone(),)
-      ),
+      (left, right) => Object::Error(Box::new(Error::TypeMismatch(
+        String::from("+"),
+        left.clone(),
+        right.clone(),
+      ))),
     }
   }
 }
@@ -65,19 +66,11 @@ impl ops::Sub for Object {
   fn sub(self, obj: Object) -> Self::Output {
     match (self, obj) {
       (Object::Integer(left), Object::Integer(right)) => Object::Integer(left - right),
-      (left, right) => panic!("{}", Error::TypeMismatch(String::from("*"), left, right)),
-    }
-  }
-}
-
-impl ops::Index<Object> for Object {
-  type Output = Object;
-
-  fn index(&self, index: Object) -> &Self::Output {
-    match (self, index) {
-      (Object::Array(arr), Object::Integer(idx)) => arr.get(idx as usize).unwrap_or(&Object::Null),
-      (Object::Hash(hash), Object::String(string)) => hash.get(&string).unwrap_or(&Object::Null),
-      (left, right) => panic!("{}", Error::IndexError(left.clone(), right)),
+      (left, right) => Object::Error(Box::new(Error::TypeMismatch(
+        String::from("-"),
+        left.clone(),
+        right.clone(),
+      ))),
     }
   }
 }
@@ -118,10 +111,7 @@ impl ops::Mul for Object {
   fn mul(self, obj: Object) -> Self::Output {
     match (self, obj) {
       (Object::Integer(left), Object::Integer(right)) => Object::Integer(left * right),
-      (left, right) => panic!(
-        "{}",
-        Error::TypeMismatch(String::from("/"), left.clone(), right.clone(),)
-      ),
+      (left, right) => Error::TypeMismatch(String::from("/"), left.clone(), right.clone()).raise(),
     }
   }
 }
@@ -131,10 +121,9 @@ impl PartialOrd for Object {
     match (self, obj) {
       (Object::Integer(left), Object::Integer(right)) => Some(compare(left, right)),
       (Object::String(left), Object::String(right)) => Some(compare(left, right)),
-      (left, right) => panic!(
-        "{}",
-        Error::TypeMismatch(String::from("'<' or '>'"), left.clone(), right.clone())
-      ),
+      (left, right) => {
+        Error::TypeMismatch(String::from("'<' or '>'"), left.clone(), right.clone()).raise()
+      }
     }
   }
 }

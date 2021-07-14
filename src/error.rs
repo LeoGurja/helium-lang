@@ -3,7 +3,7 @@ use crate::object::Object;
 use crate::token::{Operator, Token};
 use std::fmt;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Error {
   UnexpectedToken(Token, Token),
   ExpectedExpression(Token),
@@ -19,6 +19,12 @@ pub enum Error {
   IndexError(Object, Object),
   CannotAssign(Object),
   UnsupportedHashKey(Object),
+}
+
+impl Error {
+  pub fn raise(self) -> ! {
+    panic!("{}", self)
+  }
 }
 
 impl fmt::Display for Error {

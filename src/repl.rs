@@ -6,18 +6,21 @@ use std::io::Write;
 
 pub fn repl() {
   print_welcome();
-
   let visitor = Visitor::new();
   loop {
     let input = read();
-    let program = Parser::new(Lexer::new(input)).parse();
+    let mut parser = Parser::new(Lexer::new(input));
+    let program = parser.parse();
 
-    match program {
-      Ok(program) => match visitor.visit(&program) {
+    if parser.errors.len() == 0 {
+      match visitor.visit(&program) {
         Ok(obj) => println!("{}", obj),
         Err(err) => println!("{}", err),
-      },
-      Err(errs) => println!("Parse errors:\n\t{:?}", errs),
+      }
+    } else {
+      for err in parser.errors {
+        println!("{}", err)
+      }
     }
   }
 }
