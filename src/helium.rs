@@ -1,14 +1,10 @@
-use crate::ast::Statement;
-use crate::env::Env;
-use crate::error::Error;
-use crate::lexer::Lexer;
-use crate::object::Object;
-use crate::parser::Parser;
-use crate::visitor::Visitor;
-use std::cell::RefCell;
-use std::rc::Rc;
+use crate::{
+  ast::Statement, env::Env, error::Error, lexer::lex, object::Object, parser::Parser,
+  visitor::Visitor,
+};
+use std::fs;
 
-pub fn run(input: String) -> Result<Object, Vec<Error>> {
+pub fn run(input: &str) -> Result<Object, Vec<Error>> {
   let visitor = Visitor::new();
   let program = parse(input)?;
   let result = visitor.visit(&program);
@@ -19,9 +15,10 @@ pub fn run(input: String) -> Result<Object, Vec<Error>> {
   }
 }
 
-pub fn import(env: &Rc<RefCell<Env>>, input: String) -> Result<(), Vec<Error>> {
+pub fn import(env: &Env, filename: &str) -> Result<(), Vec<Error>> {
+  let file = fs::read_to_string(filename).unwrap();
   let visitor = Visitor::from(env.clone());
-  let program = parse(input)?;
+  let program = parse(&file)?;
 
   match visitor.visit(&program) {
     Ok(..) => Ok(()),
@@ -29,8 +26,8 @@ pub fn import(env: &Rc<RefCell<Env>>, input: String) -> Result<(), Vec<Error>> {
   }
 }
 
-fn parse(input: String) -> Result<Vec<Statement>, Vec<Error>> {
-  let mut parser = Parser::new(Lexer::new(input));
+fn parse(input: &str) -> Result<Vec<Statement>, Vec<Error>> {
+  let mut parser = Parser::new(lex(input));
   let program = parser.parse();
   if parser.errors.len() == 0 {
     Ok(program)

@@ -1,15 +1,12 @@
-use crate::lexer::Lexer;
-use crate::parser::Parser;
-use crate::visitor::Visitor;
-use std::io;
-use std::io::Write;
+use crate::{lexer::lex, parser::Parser, visitor::Visitor};
+use std::io::{stdin, stdout, Write};
 
 pub fn repl() {
   print_welcome();
   let visitor = Visitor::new();
   loop {
     let input = read();
-    let mut parser = Parser::new(Lexer::new(input));
+    let mut parser = Parser::new(lex(&input));
     let program = parser.parse();
 
     if parser.errors.len() == 0 {
@@ -44,8 +41,8 @@ fn print_welcome() {
 }
 
 fn read() -> String {
-  let mut stdout = io::stdout();
-  let stdin = io::stdin();
+  let mut stdout = stdout();
+  let stdin = stdin();
   let mut input = String::new();
 
   print!("{}", ">> ");

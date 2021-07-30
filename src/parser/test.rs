@@ -1,17 +1,18 @@
 use super::parser::*;
-use crate::ast::{Expression, Statement};
-use crate::lexer::Lexer;
-use crate::token::Operator;
+use crate::{
+  ast::{Expression, Statement},
+  lexer::lex,
+};
 
 #[test]
 fn hash_indexes() {
-  let input = String::from("hash['leonardo']");
+  let input = "hash['leonardo']";
 
   let program = parse(input);
 
-  let expected = vec![Statement::Expression(Expression::Index(
-    Box::new(Expression::Id(String::from("hash"))),
-    Box::new(Expression::String(String::from("leonardo"))),
+  let expected = vec![Statement::Expression(Expression::index(
+    Expression::Id("hash".to_owned()),
+    Expression::String("leonardo".to_owned()),
   ))];
 
   compare(program, expected)
@@ -19,20 +20,20 @@ fn hash_indexes() {
 
 #[test]
 fn hash() {
-  let input = String::from("let x = {'leonardo': 'gurgel', 1: 'ferreira'}");
+  let input = "let x = {'leonardo': 'gurgel', 1: 'ferreira'}";
 
   let program = parse(input);
 
-  let expected = vec![Statement::Let(
-    String::from("x"),
+  let expected = vec![Statement::VariableDeclaration(
+    "x".to_owned(),
     Expression::Hash(vec![
       (
-        Expression::String(String::from("leonardo")),
-        Expression::String(String::from("gurgel")),
+        Expression::String("leonardo".to_owned()),
+        Expression::String("gurgel".to_owned()),
       ),
       (
         Expression::Integer(1),
-        Expression::String(String::from("ferreira")),
+        Expression::String("ferreira".to_owned()),
       ),
     ]),
   )];
@@ -42,20 +43,16 @@ fn hash() {
 
 #[test]
 fn reassign() {
-  let input = String::from("let x = 0; x = x + 1");
+  let input = "let x = 0; x = x + 1";
 
   let program = parse(input);
 
   let expected = vec![
-    Statement::Let(String::from("x"), Expression::Integer(0)),
-    Statement::Expression(Expression::Infix(
-      Operator::Assign,
-      Box::new(Expression::Id(String::from("x"))),
-      Box::new(Expression::Infix(
-        Operator::Plus,
-        Box::new(Expression::Id(String::from("x"))),
-        Box::new(Expression::Integer(1)),
-      )),
+    Statement::VariableDeclaration("x".to_owned(), Expression::Integer(0)),
+    Statement::Expression(Expression::infix(
+      "=",
+      Expression::Id("x".to_owned()),
+      Expression::infix("+", Expression::Id("x".to_owned()), Expression::Integer(1)),
     )),
   ];
 
@@ -64,27 +61,19 @@ fn reassign() {
 
 #[test]
 fn while_statements() {
-  let input = String::from("let x = 0; while x < 10 x = x + 1");
+  let input = "let x = 0; while x < 10 x = x + 1";
 
   let program = parse(input);
 
   let expected = vec![
-    Statement::Let(String::from("x"), Expression::Integer(0)),
-    Statement::While(
-      Expression::Infix(
-        Operator::LessThan,
-        Box::new(Expression::Id(String::from("x"))),
-        Box::new(Expression::Integer(10)),
-      ),
-      Box::new(Statement::Expression(Expression::Infix(
-        Operator::Assign,
-        Box::new(Expression::Id(String::from("x"))),
-        Box::new(Expression::Infix(
-          Operator::Plus,
-          Box::new(Expression::Id(String::from("x"))),
-          Box::new(Expression::Integer(1)),
-        )),
-      ))),
+    Statement::VariableDeclaration("x".to_owned(), Expression::Integer(0)),
+    Statement::while_loop(
+      Expression::infix("<", Expression::Id("x".to_owned()), Expression::Integer(10)),
+      Statement::Expression(Expression::infix(
+        "=",
+        Expression::Id("x".to_owned()),
+        Expression::infix("+", Expression::Id("x".to_owned()), Expression::Integer(1)),
+      )),
     ),
   ];
 
@@ -93,29 +82,19 @@ fn while_statements() {
 
 #[test]
 fn while_blocks() {
-  let input = String::from("let x = 0; while x < 10 { x = x + 1 }");
+  let input = "let x = 0; while x < 10 { x = x + 1 }";
 
   let program = parse(input);
 
   let expected = vec![
-    Statement::Let(String::from("x"), Expression::Integer(0)),
-    Statement::While(
-      Expression::Infix(
-        Operator::LessThan,
-        Box::new(Expression::Id(String::from("x"))),
-        Box::new(Expression::Integer(10)),
-      ),
-      Box::new(Statement::Block(vec![Statement::Expression(
-        Expression::Infix(
-          Operator::Assign,
-          Box::new(Expression::Id(String::from("x"))),
-          Box::new(Expression::Infix(
-            Operator::Plus,
-            Box::new(Expression::Id(String::from("x"))),
-            Box::new(Expression::Integer(1)),
-          )),
-        ),
-      )])),
+    Statement::VariableDeclaration("x".to_owned(), Expression::Integer(0)),
+    Statement::while_loop(
+      Expression::infix("<", Expression::Id("x".to_owned()), Expression::Integer(10)),
+      Statement::Block(vec![Statement::Expression(Expression::infix(
+        "=",
+        Expression::Id("x".to_owned()),
+        Expression::infix("+", Expression::Id("x".to_owned()), Expression::Integer(1)),
+      ))]),
     ),
   ];
 
@@ -124,25 +103,21 @@ fn while_blocks() {
 
 #[test]
 fn for_statements() {
-  let input = String::from("for a in [1,2,3] let x = a + 1");
+  let input = "for a in [1,2,3] let x = a + 1";
 
   let program = parse(input);
 
-  let expected = vec![Statement::For(
-    String::from("a"),
+  let expected = vec![Statement::for_loop(
+    "a",
     Expression::Array(vec![
       Expression::Integer(1),
       Expression::Integer(2),
       Expression::Integer(3),
     ]),
-    Box::new(Statement::Let(
-      String::from("x"),
-      Expression::Infix(
-        Operator::Plus,
-        Box::new(Expression::Id(String::from("a"))),
-        Box::new(Expression::Integer(1)),
-      ),
-    )),
+    Statement::VariableDeclaration(
+      "x".to_owned(),
+      Expression::infix("+", Expression::Id("a".to_owned()), Expression::Integer(1)),
+    ),
   )];
 
   compare(program, expected)
@@ -150,25 +125,21 @@ fn for_statements() {
 
 #[test]
 fn for_blocks() {
-  let input = String::from("for a in [1,2,3] { let x = a + 1 }");
+  let input = "for a in [1,2,3] { let x = a + 1 }";
 
   let program = parse(input);
 
-  let expected = vec![Statement::For(
-    String::from("a"),
+  let expected = vec![Statement::for_loop(
+    "a",
     Expression::Array(vec![
       Expression::Integer(1),
       Expression::Integer(2),
       Expression::Integer(3),
     ]),
-    Box::new(Statement::Block(vec![Statement::Let(
-      String::from("x"),
-      Expression::Infix(
-        Operator::Plus,
-        Box::new(Expression::Id(String::from("a"))),
-        Box::new(Expression::Integer(1)),
-      ),
-    )])),
+    Statement::Block(vec![Statement::VariableDeclaration(
+      "x".to_owned(),
+      Expression::infix("+", Expression::Id("a".to_owned()), Expression::Integer(1)),
+    )]),
   )];
 
   compare(program, expected)
@@ -176,17 +147,13 @@ fn for_blocks() {
 
 #[test]
 fn array_expressions() {
-  let input = String::from("myArray[1 + 1]");
+  let input = "myArray[1 + 1]";
 
   let program = parse(input);
 
-  let expected = vec![Statement::Expression(Expression::Index(
-    Box::new(Expression::Id(String::from("myArray"))),
-    Box::new(Expression::Infix(
-      Operator::Plus,
-      Box::new(Expression::Integer(1)),
-      Box::new(Expression::Integer(1)),
-    )),
+  let expected = vec![Statement::Expression(Expression::index(
+    Expression::Id("myArray".to_owned()),
+    Expression::infix("+", Expression::Integer(1), Expression::Integer(1)),
   ))];
 
   compare(program, expected)
@@ -194,34 +161,33 @@ fn array_expressions() {
 
 #[test]
 fn escaped_string_expressions() {
-  let input = String::from(r#""leonardo \"gurgel""#);
+  let input = r#""leonardo \"gurgel""#;
 
   let program = parse(input);
 
-  let expected = vec![Statement::Expression(Expression::String(String::from(
-    r#"leonardo "gurgel"#,
-  )))];
+  let expected = vec![Statement::Expression(Expression::String(
+    r#"leonardo "gurgel"#.to_owned(),
+  ))];
 
   compare(program, expected)
 }
 
 #[test]
 fn string_expressions() {
-  let input = String::from("\"leonardo gurgel\"");
+  let input = "\"leonardo gurgel\"";
 
   let program = parse(input);
 
-  let expected = vec![Statement::Expression(Expression::String(String::from(
-    "leonardo gurgel",
-  )))];
+  let expected = vec![Statement::Expression(Expression::String(
+    "leonardo gurgel".to_owned(),
+  ))];
 
   compare(program, expected)
 }
 
 #[test]
 fn infix_expressions() {
-  let input = String::from(
-    "
+  let input = "
     5 + 5;
     5 - 5;
     5 * 5;
@@ -230,51 +196,50 @@ fn infix_expressions() {
     5 < 5;
     5 == 5;
     5 != 5;
-    ",
-  );
+    ";
 
   let program = parse(input);
 
-  let expected = vec![
-    Statement::Expression(Expression::Infix(
-      Operator::Plus,
-      Box::new(Expression::Integer(5)),
-      Box::new(Expression::Integer(5)),
+  let expected: Vec<Statement> = vec![
+    Statement::from(Expression::infix(
+      "+",
+      Expression::Integer(5),
+      Expression::Integer(5),
     )),
-    Statement::Expression(Expression::Infix(
-      Operator::Minus,
-      Box::new(Expression::Integer(5)),
-      Box::new(Expression::Integer(5)),
+    Statement::from(Expression::infix(
+      "-",
+      Expression::Integer(5),
+      Expression::Integer(5),
     )),
-    Statement::Expression(Expression::Infix(
-      Operator::Asterisk,
-      Box::new(Expression::Integer(5)),
-      Box::new(Expression::Integer(5)),
+    Statement::from(Expression::infix(
+      "*",
+      Expression::Integer(5),
+      Expression::Integer(5),
     )),
-    Statement::Expression(Expression::Infix(
-      Operator::Slash,
-      Box::new(Expression::Integer(5)),
-      Box::new(Expression::Integer(5)),
+    Statement::from(Expression::infix(
+      "/",
+      Expression::Integer(5),
+      Expression::Integer(5),
     )),
-    Statement::Expression(Expression::Infix(
-      Operator::GreaterThan,
-      Box::new(Expression::Integer(5)),
-      Box::new(Expression::Integer(5)),
+    Statement::from(Expression::infix(
+      ">",
+      Expression::Integer(5),
+      Expression::Integer(5),
     )),
-    Statement::Expression(Expression::Infix(
-      Operator::LessThan,
-      Box::new(Expression::Integer(5)),
-      Box::new(Expression::Integer(5)),
+    Statement::from(Expression::infix(
+      "<",
+      Expression::Integer(5),
+      Expression::Integer(5),
     )),
-    Statement::Expression(Expression::Infix(
-      Operator::Equals,
-      Box::new(Expression::Integer(5)),
-      Box::new(Expression::Integer(5)),
+    Statement::from(Expression::infix(
+      "==",
+      Expression::Integer(5),
+      Expression::Integer(5),
     )),
-    Statement::Expression(Expression::Infix(
-      Operator::NotEquals,
-      Box::new(Expression::Integer(5)),
-      Box::new(Expression::Integer(5)),
+    Statement::from(Expression::infix(
+      "!=",
+      Expression::Integer(5),
+      Expression::Integer(5),
     )),
   ];
 
@@ -283,22 +248,14 @@ fn infix_expressions() {
 
 #[test]
 fn prefix_expressions() {
-  let input = String::from(
-    "!5;
-  -15;",
-  );
+  let input = "!5;
+  -15;";
 
   let program = parse(input);
 
   let expected = vec![
-    Statement::Expression(Expression::Prefix(
-      Operator::Bang,
-      Box::new(Expression::Integer(5)),
-    )),
-    Statement::Expression(Expression::Prefix(
-      Operator::Minus,
-      Box::new(Expression::Integer(15)),
-    )),
+    Statement::Expression(Expression::prefix("!", Expression::Integer(5))),
+    Statement::Expression(Expression::prefix("-", Expression::Integer(15))),
   ];
 
   compare(program, expected)
@@ -306,18 +263,19 @@ fn prefix_expressions() {
 
 #[test]
 fn return_statements() {
-  let input = String::from(
-    "return 5;
+  let input = "return 5;
     return 10;
-    return 993322;",
-  );
+    return 993322;
+    return
+    ";
 
   let program = parse(input);
 
   let expected = vec![
-    Statement::Return(Some(Expression::Integer(5))),
-    Statement::Return(Some(Expression::Integer(10))),
-    Statement::Return(Some(Expression::Integer(993322))),
+    Statement::Return(Expression::Integer(5)),
+    Statement::Return(Expression::Integer(10)),
+    Statement::Return(Expression::Integer(993322)),
+    Statement::Return(Expression::Null),
   ];
 
   compare(program, expected)
@@ -325,20 +283,18 @@ fn return_statements() {
 
 #[test]
 fn let_statements() {
-  let input = String::from(
-    "
+  let input = "
   let x = 5;
   let y = 10;
   let foobar = 838383;
-  ",
-  );
+  ";
 
   let program = parse(input);
 
   let expected = vec![
-    Statement::Let(String::from("x"), Expression::Integer(5)),
-    Statement::Let(String::from("y"), Expression::Integer(10)),
-    Statement::Let(String::from("foobar"), Expression::Integer(838383)),
+    Statement::VariableDeclaration("x".to_owned(), Expression::Integer(5)),
+    Statement::VariableDeclaration("y".to_owned(), Expression::Integer(10)),
+    Statement::VariableDeclaration("foobar".to_owned(), Expression::Integer(838383)),
   ];
 
   compare(program, expected)
@@ -346,18 +302,18 @@ fn let_statements() {
 
 #[test]
 fn function_declarations_with_args() {
-  let input = String::from("fn add(a, b) a + b");
+  let input = "fn add(a, b) a + b";
 
   let program = parse(input);
 
-  let expected = vec![Statement::Expression(Expression::Function(
-    Some(String::from("add")),
-    vec![String::from("a"), String::from("b")],
-    Box::new(Statement::Expression(Expression::Infix(
-      Operator::Plus,
-      Box::new(Expression::Id(String::from("a"))),
-      Box::new(Expression::Id(String::from("b"))),
-    ))),
+  let expected = vec![Statement::Expression(Expression::function(
+    Some("add"),
+    vec!["a".to_owned(), "b".to_owned()],
+    Statement::Expression(Expression::infix(
+      "+",
+      Expression::Id("a".to_owned()),
+      Expression::Id("b".to_owned()),
+    )),
   ))];
 
   compare(program, expected)
@@ -365,24 +321,20 @@ fn function_declarations_with_args() {
 
 #[test]
 fn function_blocks_with_args() {
-  let input = String::from(
-    "fn add(a, b) {
+  let input = "fn add(a, b) {
       a + b
-    }",
-  );
+    }";
 
   let program = parse(input);
 
-  let expected = vec![Statement::Expression(Expression::Function(
-    Some(String::from("add")),
-    vec![String::from("a"), String::from("b")],
-    Box::new(Statement::Block(vec![Statement::Expression(
-      Expression::Infix(
-        Operator::Plus,
-        Box::new(Expression::Id(String::from("a"))),
-        Box::new(Expression::Id(String::from("b"))),
-      ),
-    )])),
+  let expected = vec![Statement::Expression(Expression::function(
+    Some("add"),
+    vec!["a".to_owned(), "b".to_owned()],
+    Statement::Block(vec![Statement::Expression(Expression::infix(
+      "+",
+      Expression::Id("a".to_owned()),
+      Expression::Id("b".to_owned()),
+    ))]),
   ))];
 
   compare(program, expected)
@@ -390,14 +342,14 @@ fn function_blocks_with_args() {
 
 #[test]
 fn function_declarations() {
-  let input = String::from("fn main() 0");
+  let input = "fn main() 0";
 
   let program = parse(input);
 
-  let expected = vec![Statement::Expression(Expression::Function(
-    Some(String::from("main")),
+  let expected = vec![Statement::Expression(Expression::function(
+    Some("main"),
     vec![],
-    Box::new(Statement::Expression(Expression::Integer(0))),
+    Statement::Expression(Expression::Integer(0)),
   ))];
 
   compare(program, expected)
@@ -405,20 +357,16 @@ fn function_declarations() {
 
 #[test]
 fn function_blocks() {
-  let input = String::from(
-    "fn main() {
+  let input = "fn main() {
       0
-    }",
-  );
+    }";
 
   let program = parse(input);
 
-  let expected = vec![Statement::Expression(Expression::Function(
-    Some(String::from("main")),
+  let expected = vec![Statement::Expression(Expression::function(
+    Some("main"),
     vec![],
-    Box::new(Statement::Block(vec![Statement::Expression(
-      Expression::Integer(0),
-    )])),
+    Statement::Block(vec![Statement::Expression(Expression::Integer(0))]),
   ))];
 
   compare(program, expected)
@@ -426,11 +374,11 @@ fn function_blocks() {
 
 #[test]
 fn call_expressions() {
-  let input = String::from("add(3, 5);");
+  let input = "add(3, 5);";
 
   let program = parse(input);
-  let expected = vec![Statement::Expression(Expression::Call(
-    Box::new(Expression::Id(String::from("add"))),
+  let expected = vec![Statement::Expression(Expression::call(
+    Expression::Id("add".to_owned()),
     vec![Expression::Integer(3), Expression::Integer(5)],
   ))];
 
@@ -439,35 +387,29 @@ fn call_expressions() {
 
 #[test]
 fn if_expressions() {
-  let input = String::from(
-    "if x > y return x; else return y;
-    let result = if (x > y) x else y",
-  );
+  let input = "if x > y return x; else return y;
+    let result = if (x > y) x else y";
 
   let expected = vec![
-    Statement::Expression(Expression::If(
-      Box::new(Expression::Infix(
-        Operator::GreaterThan,
-        Box::new(Expression::Id(String::from("x"))),
-        Box::new(Expression::Id(String::from("y"))),
-      )),
-      Box::new(Statement::Return(Some(Expression::Id(String::from("x"))))),
-      Some(Box::new(Statement::Return(Some(Expression::Id(
-        String::from("y"),
-      ))))),
+    Statement::Expression(Expression::conditional(
+      Expression::infix(
+        ">",
+        Expression::Id("x".to_owned()),
+        Expression::Id("y".to_owned()),
+      ),
+      Statement::Return(Expression::Id("x".to_owned())),
+      Some(Statement::Return(Expression::Id("y".to_owned()))),
     )),
-    Statement::Let(
-      String::from("result"),
-      Expression::If(
-        Box::new(Expression::Infix(
-          Operator::GreaterThan,
-          Box::new(Expression::Id(String::from("x"))),
-          Box::new(Expression::Id(String::from("y"))),
-        )),
-        Box::new(Statement::Expression(Expression::Id(String::from("x")))),
-        Some(Box::new(Statement::Expression(Expression::Id(
-          String::from("y"),
-        )))),
+    Statement::VariableDeclaration(
+      "result".to_owned(),
+      Expression::conditional(
+        Expression::infix(
+          ">",
+          Expression::Id("x".to_owned()),
+          Expression::Id("y".to_owned()),
+        ),
+        Statement::Expression(Expression::Id("x".to_owned())),
+        Some(Statement::Expression(Expression::Id("y".to_owned()))),
       ),
     ),
   ];
@@ -477,43 +419,37 @@ fn if_expressions() {
 
 #[test]
 fn if_block() {
-  let input = String::from(
-    "if x > y {
+  let input = "if x > y {
       return x;
     } else {
       return y;
     }
-    let result = if (x > y) { x } else { y }",
-  );
+    let result = if (x > y) { x } else { y }";
 
   let expected = vec![
-    Statement::Expression(Expression::If(
-      Box::new(Expression::Infix(
-        Operator::GreaterThan,
-        Box::new(Expression::Id(String::from("x"))),
-        Box::new(Expression::Id(String::from("y"))),
-      )),
-      Box::new(Statement::Block(vec![Statement::Return(Some(
-        Expression::Id(String::from("x")),
+    Statement::Expression(Expression::conditional(
+      Expression::infix(
+        ">",
+        Expression::Id("x".to_owned()),
+        Expression::Id("y".to_owned()),
+      ),
+      Statement::Block(vec![Statement::Return(Expression::Id("x".to_owned()))]),
+      Some(Statement::Block(vec![Statement::Return(Expression::Id(
+        "y".to_owned(),
       ))])),
-      Some(Box::new(Statement::Block(vec![Statement::Return(Some(
-        Expression::Id(String::from("y")),
-      ))]))),
     )),
-    Statement::Let(
-      String::from("result"),
-      Expression::If(
-        Box::new(Expression::Infix(
-          Operator::GreaterThan,
-          Box::new(Expression::Id(String::from("x"))),
-          Box::new(Expression::Id(String::from("y"))),
-        )),
-        Box::new(Statement::Block(vec![Statement::Expression(
-          Expression::Id(String::from("x")),
+    Statement::VariableDeclaration(
+      "result".to_owned(),
+      Expression::conditional(
+        Expression::infix(
+          ">",
+          Expression::Id("x".to_owned()),
+          Expression::Id("y".to_owned()),
+        ),
+        Statement::Block(vec![Statement::Expression(Expression::Id("x".to_owned()))]),
+        Some(Statement::Block(vec![Statement::Expression(
+          Expression::Id("y".to_owned()),
         )])),
-        Some(Box::new(Statement::Block(vec![Statement::Expression(
-          Expression::Id(String::from("y")),
-        )]))),
       ),
     ),
   ];
@@ -523,23 +459,21 @@ fn if_block() {
 
 #[test]
 fn semicolons() {
-  compare(parse(String::from("1 + 1;")), parse(String::from("1 + 1")))
+  compare(parse("1 + 1;"), parse("1 + 1"))
 }
 
 #[test]
 fn boolean_expressions() {
-  let input = String::from(
-    "true;
+  let input = "true;
     false;
     let foobar = true;
-    let barfoo = false;",
-  );
+    let barfoo = false;";
 
   let expected = vec![
     Statement::Expression(Expression::TRUE),
     Statement::Expression(Expression::FALSE),
-    Statement::Let(String::from("foobar"), Expression::TRUE),
-    Statement::Let(String::from("barfoo"), Expression::FALSE),
+    Statement::VariableDeclaration("foobar".to_owned(), Expression::TRUE),
+    Statement::VariableDeclaration("barfoo".to_owned(), Expression::FALSE),
   ];
   compare(parse(input), expected)
 }
@@ -569,12 +503,12 @@ fn precedence() {
   ];
 
   for (actual, expected) in inputs {
-    compare(parse(String::from(actual)), parse(String::from(expected)));
+    compare(parse(actual), parse(expected));
   }
 }
 
-fn parse(input: String) -> Vec<Statement> {
-  let mut parser = Parser::new(Lexer::new(input));
+fn parse(input: &str) -> Vec<Statement> {
+  let mut parser = Parser::new(lex(input));
   let program = parser.parse();
 
   for err in parser.errors {

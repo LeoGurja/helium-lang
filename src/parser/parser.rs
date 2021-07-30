@@ -1,21 +1,22 @@
-use crate::ast::{Expression, Precedence, Statement};
-use crate::error::Error;
-use crate::lexer::Lexer;
-use crate::token::{Operator, Token};
-use std::cell::Cell;
+use crate::{
+  ast::{Expression, Precedence, Statement},
+  error::Error,
+  lexer::{Lexer, Token},
+};
+use std::rc::Rc;
 
 type Result<T> = std::result::Result<T, Error>;
 
-pub struct Parser {
-  lexer: Lexer,
-  current: Cell<Token>,
+pub struct Parser<'a> {
+  lexer: Lexer<'a, Token<'a>>,
+  current: Token<'a>,
   pub errors: Vec<Error>,
 }
 
-impl Parser {
-  pub fn new(lexer: Lexer) -> Self {
+impl<'a> Parser<'a> {
+  pub fn new(mut lexer: Lexer<'a, Token<'a>>) -> Self {
     Parser {
-      current: Cell::new(lexer.next_token()),
+      current: lexer.next().unwrap_or(Token::Eof),
       lexer,
       errors: vec![],
     }
@@ -51,29 +52,28 @@ impl Parser {
   }
 
   fn parse_statement(&mut self) -> Result<Statement> {
-    let statement = match self.current.get_mut() {
-      Token::Let => self.parse_variable_declaration(),
-      Token::Return => self.parse_return(),
-      Token::For => self.parse_for_loop(),
-      Token::While => self.parse_while_loop(),
-      Token::LeftBrace => return self.parse_block(),
-      Token::Eof | Token::RightBrace => Ok(Statement::Null),
-      _ => Ok(Statement::Expression(
-        self.parse_expression(Precedence::Lowest)?,
-      )),
+    let statement = match self.current {
+      Token::Let => self.parse_variable_declaration()?,
+      Token::Return => self.parse_return()?,
+      Token::For => self.parse_for_loop()?,
+      Token::While => self.parse_while_loop()?,
+      Token::LeftBrace => self.parse_block()?,
+      Token::RightBrace | Token::Eof => Statement::Null,
+      _ => Statement::Expression(self.parse_expression(Precedence::Lowest)?),
     };
     self.skip_semicolons();
-    statement
+    Ok(statement)
   }
 
   fn parse_expression(&mut self, precedence: Precedence) -> Result<Expression> {
-    let left = match self.advance() {
+    let current = self.advance();
+    let left = match current {
       Token::Id(value) => self.parse_id(value),
-      Token::Integer(value) => self.parse_integer(value),
-      Token::String(value) => Ok(Expression::String(value.clone())),
+      Token::Integer(value) => Ok(Expression::Integer(value)),
+      Token::String(value) => Ok(Expression::String(value.to_owned())),
       Token::True => Ok(Expression::TRUE),
       Token::False => Ok(Expression::FALSE),
-      Token::Operator(operator) => self.parse_prefix(operator),
+      Token::Operator(op) => self.parse_prefix(op),
       Token::LeftParen => self.parse_grouped_expression(),
       Token::If => self.parse_if_expression(),
       Token::LeftBracket => Ok(Expression::Array(
@@ -81,7 +81,8 @@ impl Parser {
       )),
       Token::LeftBrace => self.parse_hash(),
       Token::Function => self.parse_function(),
-      token => Err(Error::ExpectedExpression(token)),
+      Token::Semicolon | Token::RightBrace => Ok(Expression::Null),
+      token => Err(Error::expected_expression(token)),
     }?;
 
     self.parse_infix(left, precedence)
@@ -89,12 +90,12 @@ impl Parser {
 
   fn parse_hash(&mut self) -> Result<Expression> {
     let mut hash = vec![];
-    while !self.eat_if(Token::RightBrace) {
+    while !self.eat_if(&Token::RightBrace) {
       let key = self.parse_expression(Precedence::Lowest)?;
       self.eat(Token::Colon)?;
       let value = self.parse_expression(Precedence::Lowest)?;
       hash.push((key, value));
-      self.eat_if(Token::Comma);
+      self.eat_if(&Token::Comma);
     }
 
     Ok(Expression::Hash(hash))
@@ -102,7 +103,7 @@ impl Parser {
 
   fn parse_infix(&mut self, mut left: Expression, precedence: Precedence) -> Result<Expression> {
     loop {
-      left = match &self.current.get_mut().clone() {
+      left = match self.current {
         Token::LeftBracket => self.parse_index_expression(left)?,
         Token::LeftParen => self.parse_function_call(left)?,
         Token::Operator(operator) if precedence < Precedence::from(operator) => {
@@ -114,12 +115,13 @@ impl Parser {
     Ok(left)
   }
 
-  fn parse_operator(&mut self, left: Expression, operator: &Operator) -> Result<Expression> {
+  fn parse_operator(&mut self, left: Expression, operator: &'a str) -> Result<Expression> {
     self.advance();
-    Ok(Expression::Infix(
-      operator.clone(),
-      Box::new(left),
-      Box::new(self.parse_expression(Precedence::from(operator))?),
+    let precedence = Precedence::from(&operator);
+    Ok(Expression::infix(
+      operator,
+      left,
+      self.parse_expression(precedence)?,
     ))
   }
 
@@ -127,29 +129,29 @@ impl Parser {
     self.eat(Token::LeftBracket)?;
     let right = self.parse_expression(Precedence::Lowest)?;
     self.eat(Token::RightBracket)?;
-    Ok(Expression::Index(Box::new(left), Box::new(right)))
+    Ok(Expression::index(left, right))
   }
 
   fn parse_for_loop(&mut self) -> Result<Statement> {
     self.eat(Token::For)?;
     let variable = match self.advance() {
       Token::Id(id) => id,
-      token => return Err(Error::UnexpectedToken(Token::Id(String::from("..")), token)),
+      token => return Err(Error::unexpected_token(Token::Id("..."), token)),
     };
     self.eat(Token::In)?;
 
-    Ok(Statement::For(
-      variable.clone(),
+    Ok(Statement::for_loop(
+      &variable,
       self.parse_expression(Precedence::Lowest)?,
-      Box::new(self.parse_statement()?),
+      self.parse_statement()?,
     ))
   }
 
   fn parse_while_loop(&mut self) -> Result<Statement> {
     self.eat(Token::While)?;
-    Ok(Statement::While(
+    Ok(Statement::while_loop(
       self.parse_expression(Precedence::Lowest)?,
-      Box::new(self.parse_statement()?),
+      self.parse_statement()?,
     ))
   }
 
@@ -159,39 +161,34 @@ impl Parser {
     let name = match self.advance() {
       Token::Id(id) => {
         self.eat(Token::LeftParen)?;
-        Some(id)
+        Some(id.to_owned())
       }
       Token::LeftParen => None,
-      token => return Err(Error::UnexpectedToken(Token::LeftParen, token)),
+      token => return Err(Error::unexpected_token(Token::LeftParen, token)),
     };
 
-    while !self.eat_if(Token::RightParen) {
+    while !self.eat_if(&Token::RightParen) {
       match self.advance() {
-        Token::Id(arg) => args.push(arg),
-        token => {
-          return Err(Error::UnexpectedToken(
-            Token::Id(String::from("...")),
-            token,
-          ))
-        }
+        Token::Id(arg) => args.push(arg.to_owned()),
+        token => return Err(Error::unexpected_token(Token::Id("..."), token)),
       };
 
-      self.eat_if(Token::Comma);
+      self.eat_if(&Token::Comma);
     }
 
     Ok(Expression::Function(
       name,
       args,
-      Box::new(self.parse_statement()?),
+      Rc::new(self.parse_statement()?),
     ))
   }
 
   fn parse_expression_list(&mut self, end: Token) -> std::result::Result<Vec<Expression>, Error> {
     let mut args = vec![];
-    while !self.eat_if(end.clone()) {
+    while !self.eat_if(&end) {
       args.push(self.parse_expression(Precedence::Lowest)?);
 
-      if !self.eat_if(Token::Comma) {
+      if !self.eat_if(&Token::Comma) {
         self.eat(end)?;
         break;
       }
@@ -200,16 +197,16 @@ impl Parser {
   }
 
   fn parse_if_expression(&mut self) -> Result<Expression> {
-    let condition = Box::new(self.parse_expression(Precedence::Lowest)?);
-    let consequence = Box::new(self.parse_statement()?);
-    let alternative = if self.eat_if(Token::Else) {
-      let else_block = Box::new(self.parse_statement()?);
+    let condition = self.parse_expression(Precedence::Lowest)?;
+    let consequence = self.parse_statement()?;
+    let alternative = if self.eat_if(&Token::Else) {
+      let else_block = self.parse_statement()?;
       Some(else_block)
     } else {
       None
     };
 
-    Ok(Expression::If(condition, consequence, alternative))
+    Ok(Expression::conditional(condition, consequence, alternative))
   }
 
   fn parse_grouped_expression(&mut self) -> Result<Expression> {
@@ -218,72 +215,61 @@ impl Parser {
     left
   }
 
-  fn parse_id(&mut self, id: String) -> Result<Expression> {
-    Ok(Expression::Id(id))
+  fn parse_id(&mut self, id: &str) -> Result<Expression> {
+    Ok(Expression::Id(id.to_owned()))
   }
 
   fn parse_function_call(&mut self, left: Expression) -> Result<Expression> {
     self.eat(Token::LeftParen)?;
-    Ok(Expression::Call(
-      Box::new(left),
+    Ok(Expression::call(
+      left,
       self.parse_expression_list(Token::RightParen)?,
     ))
   }
 
-  fn parse_integer(&mut self, integer: String) -> Result<Expression> {
-    match integer.parse() {
-      Ok(value) => Ok(Expression::Integer(value)),
-      Err(_) => Err(Error::ParsingError(String::from("integer"), integer)),
-    }
-  }
-
-  fn parse_prefix(&mut self, operator: Operator) -> Result<Expression> {
-    let expression = self.parse_expression(Precedence::Prefix)?;
-
-    Ok(Expression::Prefix(operator, Box::new(expression)))
+  fn parse_prefix(&mut self, operator: &str) -> Result<Expression> {
+    Ok(Expression::prefix(
+      operator,
+      self.parse_expression(Precedence::Prefix)?,
+    ))
   }
 
   fn parse_variable_declaration(&mut self) -> Result<Statement> {
     self.eat(Token::Let)?;
     let name = match self.advance() {
-      Token::Id(id) => id.clone(),
-      token => {
-        return Err(Error::UnexpectedToken(
-          Token::Id(String::from("...")),
-          token,
-        ))
-      }
+      Token::Id(id) => id.to_owned(),
+      token => return Err(Error::unexpected_token(Token::Id("..."), token)),
     };
 
-    self.eat(Token::Operator(Operator::Assign))?;
+    self.eat(Token::Operator("="))?;
 
     let value = self.parse_expression(Precedence::Lowest)?;
 
-    Ok(Statement::Let(name, value))
+    Ok(Statement::VariableDeclaration(name.to_owned(), value))
   }
 
   fn parse_return(&mut self) -> Result<Statement> {
     self.eat(Token::Return)?;
     let value = self.parse_expression(Precedence::Lowest)?;
 
-    Ok(Statement::Return(Some(value)))
+    Ok(Statement::Return(value))
   }
 
   fn skip_semicolons(&mut self) {
-    while self.eat_if(Token::Semicolon) {}
+    while self.eat_if(&Token::Semicolon) {}
   }
 
-  fn eat(&self, should_be: Token) -> Result<Token> {
-    let token = self.advance();
-    if token == should_be {
-      Ok(should_be)
+  fn eat(&mut self, should_be: Token) -> Result<()> {
+    let current = self.advance();
+    if current == should_be {
+      Ok(())
     } else {
-      Err(Error::UnexpectedToken(should_be, token))
+      Err(Error::unexpected_token(should_be, current))
     }
   }
 
-  fn eat_if(&mut self, should_be: Token) -> bool {
-    if self.current.get_mut() == &should_be {
+  fn eat_if(&mut self, should_be: &Token) -> bool {
+    if &self.current == should_be {
       self.advance();
       true
     } else {
@@ -291,7 +277,7 @@ impl Parser {
     }
   }
 
-  fn advance(&self) -> Token {
-    self.current.replace(self.lexer.next_token())
+  fn advance<'s>(&'s mut self) -> Token<'a> {
+    std::mem::replace(&mut self.current, self.lexer.next().unwrap_or(Token::Eof))
   }
 }

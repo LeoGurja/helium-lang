@@ -1,82 +1,96 @@
-use crate::ast::Statement;
-use crate::lexer::Lexer;
-use crate::object::Object;
-use crate::parser::Parser;
-use crate::visitor::Visitor;
-use std::cell::RefCell;
-use std::rc::Rc;
+use crate::{ast::Statement, lexer::lex, object::Object, parser::Parser, visitor::Visitor};
 
 #[test]
 fn array_push() {
-  let input = String::from("push([1,2,3,4], 5)");
+  let input = "push([1,2,3,4], 5)";
   assert_eq!(
     visit(input),
-    Object::Array(Rc::new(RefCell::new(vec![
+    Object::Array(vec![
       Object::Integer(1),
       Object::Integer(2),
       Object::Integer(3),
       Object::Integer(4),
       Object::Integer(5)
-    ])))
+    ])
   )
 }
 
 #[test]
 fn string_push() {
-  let input = String::from("push('leonardo', ' gurgel')");
-  assert_eq!(
-    visit(input),
-    Object::String(String::from("leonardo gurgel"))
-  )
+  let input = "push('leonardo', ' gurgel')";
+  assert_eq!(visit(input), Object::String("leonardo gurgel".to_owned()))
 }
 
 #[test]
 fn array_len() {
-  let input = String::from("len([1,2,3,4])");
+  let input = "len([1,2,3,4])";
   assert_eq!(visit(input), Object::Integer(4))
 }
 
 #[test]
 fn array_first() {
-  let input = String::from("first([1,2,3,4])");
+  let input = "first([1,2,3,4])";
   assert_eq!(visit(input), Object::Integer(1))
 }
 
 #[test]
 fn array_last() {
-  let input = String::from("last([1,2,3,4,5])");
+  let input = "last([1,2,3,4,5])";
   assert_eq!(visit(input), Object::Integer(5))
 }
 
 #[test]
 fn string_len() {
-  let input = String::from("len('leonardo gurgel')");
+  let input = "len('leonardo gurgel')";
   assert_eq!(visit(input), Object::Integer(15))
 }
 
 #[test]
 fn string_first() {
-  let input = String::from("first('leonardo gurgel')");
-  assert_eq!(visit(input), Object::String(String::from("l")))
+  let input = "first('leonardo gurgel')";
+  assert_eq!(visit(input), Object::String("l".to_owned()))
+}
+
+#[test]
+fn empty_array_first() {
+  let input = "first([])";
+  assert_eq!(visit(input), Object::Null)
+}
+
+#[test]
+fn empty_string_first() {
+  let input = "first('')";
+  assert_eq!(visit(input), Object::Null)
 }
 
 #[test]
 fn string_last() {
-  let input = String::from("last('leonardo')");
-  assert_eq!(visit(input), Object::String(String::from("o")))
+  let input = "last('leonardo')";
+  assert_eq!(visit(input), Object::String("o".to_owned()))
+}
+
+#[test]
+fn empty_string_last() {
+  let input = "last('')";
+  assert_eq!(visit(input), Object::Null)
+}
+
+#[test]
+fn empty_array_last() {
+  let input = "last([])";
+  assert_eq!(visit(input), Object::Null)
 }
 
 #[test]
 fn print() {
-  let input = String::from("print('hello world')");
+  let input = "print('hello world')";
   assert_eq!(visit(input), Object::Null)
 }
 
-fn visit(input: String) -> Object {
+fn visit(input: &str) -> Object {
   let visitor = Visitor::new();
-  visitor
-    .visit(&parse(Parser::new(Lexer::new(input))))
-    .unwrap()
+  let program = parse(Parser::new(lex(input)));
+  visitor.visit(&program).unwrap()
 }
 
 fn parse(mut parser: Parser) -> Vec<Statement> {

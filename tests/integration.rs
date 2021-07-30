@@ -1,7 +1,4 @@
-use crate::helium;
-use crate::object::Object;
-use std::cell::RefCell;
-use std::rc::Rc;
+use helium::{helium::run, object::Object};
 
 #[test]
 fn book_name() {
@@ -26,11 +23,11 @@ fn book_name() {
   ",
   );
 
-  let result = helium::run(input).unwrap();
+  let result = run(&input).unwrap();
 
   assert_eq!(
     result,
-    Object::String(String::from("Thorsten Ball - Writing A Compiler In Go"))
+    Object::String("Thorsten Ball - Writing A Compiler In Go".to_owned())
   )
 }
 
@@ -53,17 +50,17 @@ fn fibonacci() {
   ",
   );
 
-  let result = helium::run(input).unwrap();
+  let result = run(&input).unwrap();
 
   assert_eq!(
     result,
-    Object::Array(Rc::new(RefCell::new(vec![
+    Object::Array(vec![
       Object::Integer(1),
       Object::Integer(1),
       Object::Integer(2),
       Object::Integer(3),
       Object::Integer(5),
       Object::Integer(8)
-    ])))
+    ])
   )
 }

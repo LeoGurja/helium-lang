@@ -1,25 +1,16 @@
-use crate::ast::Statement;
-use crate::env::Env;
-use crate::error::Error;
-use crate::helpers::comma_separated;
-use crate::token::Operator;
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::fmt;
-use std::ops;
-use std::rc::Rc;
+use crate::{ast::Statement, env::Env, error::Error, helpers::comma_separated};
+use std::{collections::HashMap, fmt, ops, rc::Rc};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Object {
-  Array(Rc<RefCell<Vec<Object>>>),
-  Error(Box<Error>),
+  Array(Vec<Object>),
   Integer(i64),
   String(String),
   Boolean(bool),
   Return(Box<Object>),
-  Function(Vec<String>, Statement, Rc<RefCell<Env>>),
+  Function(Vec<String>, Rc<Statement>, Env),
   BuiltIn(fn(Vec<Object>) -> Result<Object, Error>),
-  Hash(Rc<RefCell<HashMap<String, Object>>>),
+  Hash(HashMap<String, Object>),
   Null,
 }
 
@@ -29,16 +20,15 @@ impl fmt::Display for Object {
       f,
       "{}",
       match self {
-        Self::Error(err) => format!("{}", *err),
-        Self::Hash(hash) => format!("{:?}", &hash.borrow()),
+        Self::Hash(hash) => format!("{:?}", hash),
         Self::Integer(value) => value.to_string(),
         Self::Boolean(value) => value.to_string(),
-        Self::String(value) => value.clone(),
+        Self::String(value) => format!("'{}'", value),
         Self::Return(obj) => obj.to_string(),
         Self::Function(args, ..) => format!("fn({})", comma_separated(args)),
         Self::BuiltIn(..) => format!("builtin fn()"),
-        Self::Array(array) => format!("[{}]", comma_separated(&array.borrow())),
-        Self::Null => String::from("null"),
+        Self::Array(array) => format!("[{}]", comma_separated(array)),
+        Self::Null => "null".to_string(),
       }
     )
   }
@@ -50,12 +40,8 @@ impl ops::Add for Object {
   fn add(self, obj: Object) -> Self::Output {
     match (self, obj) {
       (Object::Integer(left), Object::Integer(right)) => Object::Integer(left + right),
-      (Object::String(left), Object::String(right)) => Object::String(left.clone() + &right),
-      (left, right) => Object::Error(Box::new(Error::TypeMismatch(
-        String::from("+"),
-        left.clone(),
-        right.clone(),
-      ))),
+      (Object::String(left), Object::String(right)) => Object::String(format!("{}{}", left, right)),
+      (left, right) => Error::type_mismatch("+", left, right).raise(),
     }
   }
 }
@@ -66,11 +52,7 @@ impl ops::Sub for Object {
   fn sub(self, obj: Object) -> Self::Output {
     match (self, obj) {
       (Object::Integer(left), Object::Integer(right)) => Object::Integer(left - right),
-      (left, right) => Object::Error(Box::new(Error::TypeMismatch(
-        String::from("-"),
-        left.clone(),
-        right.clone(),
-      ))),
+      (left, right) => Error::type_mismatch("-", left, right).raise(),
     }
   }
 }
@@ -81,7 +63,7 @@ impl ops::Div for Object {
   fn div(self, obj: Object) -> Self::Output {
     match (self, obj) {
       (Object::Integer(left), Object::Integer(right)) => Object::Integer(left / right),
-      (left, right) => panic!("{}", Error::TypeMismatch(String::from("/"), left, right)),
+      (left, right) => Error::type_mismatch("/", left, right).raise(),
     }
   }
 }
@@ -92,7 +74,7 @@ impl ops::Neg for Object {
   fn neg(self) -> Self::Output {
     match self {
       Object::Integer(number) => Object::Integer(-number),
-      _ => panic!("{}", Error::UnknownOperator(Operator::Minus, self)),
+      _ => Error::unknown_operator("-", self).raise(),
     }
   }
 }
@@ -101,7 +83,7 @@ impl ops::Not for Object {
   type Output = Object;
 
   fn not(self) -> Self::Output {
-    Object::from(!self.is_truthy())
+    Object::boolean(!self.is_truthy())
   }
 }
 
@@ -111,7 +93,7 @@ impl ops::Mul for Object {
   fn mul(self, obj: Object) -> Self::Output {
     match (self, obj) {
       (Object::Integer(left), Object::Integer(right)) => Object::Integer(left * right),
-      (left, right) => Error::TypeMismatch(String::from("/"), left.clone(), right.clone()).raise(),
+      (left, right) => Error::type_mismatch("/", left, right).raise(),
     }
   }
 }
@@ -121,9 +103,7 @@ impl PartialOrd for Object {
     match (self, obj) {
       (Object::Integer(left), Object::Integer(right)) => Some(compare(left, right)),
       (Object::String(left), Object::String(right)) => Some(compare(left, right)),
-      (left, right) => {
-        Error::TypeMismatch(String::from("'<' or '>'"), left.clone(), right.clone()).raise()
-      }
+      (left, right) => Error::type_mismatch("< or >", left.clone(), right.clone()).raise(),
     }
   }
 }
@@ -139,22 +119,26 @@ fn compare<T: PartialEq + PartialOrd>(left: T, right: T) -> std::cmp::Ordering {
 }
 
 impl Object {
-  pub const TRUE: Object = Object::Boolean(true);
-  pub const FALSE: Object = Object::Boolean(false);
-  pub const NULL: Object = Object::Null;
+  pub const TRUE: Self = Self::Boolean(true);
+  pub const FALSE: Self = Self::Boolean(false);
+  pub const NULL: Self = Self::Null;
 
-  pub fn from(boolean: bool) -> Object {
+  pub fn boolean(boolean: bool) -> Self {
     if boolean {
-      Object::TRUE
+      Self::TRUE
     } else {
-      Object::FALSE
+      Self::FALSE
     }
+  }
+
+  pub fn r#return(obj: Self) -> Self {
+    Self::Return(Box::new(obj))
   }
 
   pub fn is_truthy(&self) -> bool {
     match self {
-      Object::Boolean(b) => *b,
-      Object::Null => false,
+      Self::Boolean(b) => *b,
+      Self::Null => false,
       _ => true,
     }
   }

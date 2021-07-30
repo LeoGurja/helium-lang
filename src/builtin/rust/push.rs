@@ -1,26 +1,16 @@
-use super::helpers::validate_params;
-use crate::error::Error;
-use crate::object::Object;
-use std::cell::RefCell;
-use std::rc::Rc;
+use crate::{error::Error, helpers::validate_params, object::Object};
 
-pub fn push(args: Vec<Object>) -> Result<Object, Error> {
+pub fn push(mut args: Vec<Object>) -> Result<Object, Error> {
   validate_params(&args, 2)?;
-
-  match &args[0] {
-    Object::Array(array) => {
-      let mut new_array = array.borrow().clone();
-      new_array.push(args[1].clone());
-      Ok(Object::Array(Rc::new(RefCell::new(new_array))))
+  match (args.remove(0), args.remove(0)) {
+    (Object::Array(array), obj) => {
+      let mut new_array = array.clone();
+      new_array.push(obj.clone());
+      Ok(Object::Array(new_array))
     }
-    Object::String(string) => {
-      let mut new_string = string.clone();
-      new_string.push_str(&args[1].to_string());
-      Ok(Object::String(new_string))
+    (Object::String(left), Object::String(right)) => {
+      Ok(Object::String(format!("{}{}", left, right)))
     }
-    _ => Err(Error::TypeError(
-      "array or string".to_owned(),
-      args[0].clone(),
-    )),
+    (arr, _) => Err(Error::type_error("array or string", arr)),
   }
 }

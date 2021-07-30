@@ -1,5 +1,7 @@
 pub mod ast;
 pub mod builtin;
+// pub mod bytecode;
+// pub mod compiler;
 pub mod env;
 pub mod error;
 pub mod helium;
@@ -8,6 +10,5 @@ pub mod lexer;
 pub mod object;
 pub mod parser;
 pub mod repl;
-mod test;
-pub mod token;
 pub mod visitor;
+// pub mod vm;

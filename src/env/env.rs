@@ -1,55 +1,54 @@
-use crate::builtin;
-use crate::error::Error;
-use crate::object::Object;
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::rc::Rc;
+use crate::{builtin, error::Error, object::Object};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-#[derive(Debug, PartialEq)]
-pub struct Env {
-  store: HashMap<String, Object>,
-  parent: Option<Rc<RefCell<Env>>>,
+pub type Env = Rc<Environment>;
+
+pub fn global() -> Env {
+  let env = Rc::new(Environment {
+    store: RefCell::new(HashMap::new()),
+    parent: None,
+  });
+
+  builtin::register(&env).unwrap();
+  env
 }
 
-impl Env {
-  fn new(parent: Option<Rc<RefCell<Env>>>) -> Rc<RefCell<Self>> {
-    Rc::new(RefCell::new(Env {
-      store: HashMap::new(),
-      parent,
-    }))
-  }
-  pub fn global() -> Rc<RefCell<Self>> {
-    let env = Env::new(None);
-    builtin::register(&env).unwrap();
-    env
-  }
+pub fn local(parent: Env) -> Env {
+  Rc::new(Environment {
+    store: RefCell::new(HashMap::new()),
+    parent: Some(parent),
+  })
+}
 
-  pub fn local(parent: Rc<RefCell<Env>>) -> Rc<RefCell<Self>> {
-    Env::new(Some(parent))
-  }
+#[derive(Debug, PartialEq)]
+pub struct Environment {
+  store: RefCell<HashMap<String, Object>>,
+  parent: Option<Rc<Self>>,
+}
 
+impl Environment {
   pub fn get(&self, key: &str) -> Option<Object> {
-    match self.store.get(key) {
-      Some(obj) => Some(obj.clone()),
+    match self.store.borrow().get(key) {
       None => match &self.parent {
-        Some(parent) => parent.borrow().get(key),
+        Some(parent) => parent.get(key),
         None => None,
       },
+      Some(obj) => Some(obj.clone()),
     }
   }
 
-  pub fn update(&mut self, key: &str, value: Object) {
-    if self.store.contains_key(key) {
+  pub fn update(&self, key: &str, value: Object) {
+    if self.store.borrow().contains_key(key) {
       self.set(key, value)
     } else {
       match &self.parent {
-        Some(parent) => parent.borrow_mut().update(key, value),
-        None => Error::UndefinedVariable(key.to_owned()).raise(),
+        Some(parent) => parent.update(key, value),
+        None => Error::undefined_variable(key).raise(),
       }
     }
   }
 
-  pub fn set(&mut self, key: &str, value: Object) {
-    self.store.insert(key.to_owned(), value);
+  pub fn set(&self, key: &str, value: Object) {
+    self.store.borrow_mut().insert(key.to_owned(), value);
   }
 }

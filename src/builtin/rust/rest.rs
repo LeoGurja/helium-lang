@@ -1,21 +1,15 @@
-use super::helpers::validate_params;
-use crate::error::Error;
-use crate::object::Object;
-use std::cell::RefCell;
-use std::rc::Rc;
+use crate::{error::Error, helpers::validate_params, object::Object};
 
-pub fn rest(arguments: Vec<Object>) -> Result<Object, Error> {
-  validate_params(&arguments, 1)?;
-  match &arguments[0] {
+pub fn rest(mut args: Vec<Object>) -> Result<Object, Error> {
+  validate_params(&args, 1)?;
+  match args.remove(0) {
     Object::Array(values) => {
-      if values.borrow().is_empty() {
+      if values.is_empty() {
         Ok(Object::Null)
       } else {
-        Ok(Object::Array(Rc::new(RefCell::new(
-          values.borrow()[1..].to_vec(),
-        ))))
+        Ok(Object::Array(values[1..].to_vec()))
       }
     }
-    _ => Err(Error::TypeError("array".to_owned(), arguments[0].clone())),
+    obj => Err(Error::type_error("array", obj)),
   }
 }

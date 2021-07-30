@@ -1,11 +1,9 @@
-use crate::token::Operator;
-
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
 pub enum Precedence {
   Lowest,
   Assign,      // =
   Equals,      // == | !=
-  LessGreater, // >  | <
+  LessGreater, // >  | < | <= | >=
   Sum,         // +  | -
   Product,     // *
   Prefix,      // -X or !X
@@ -14,14 +12,14 @@ pub enum Precedence {
 }
 
 impl Precedence {
-  pub fn from(token: &Operator) -> Self {
-    match token {
-      Operator::Assign => Precedence::Assign,
-      Operator::Equals | Operator::NotEquals => Precedence::Equals,
-      Operator::GreaterThan | Operator::LessThan => Precedence::LessGreater,
-      Operator::Plus | Operator::Minus => Precedence::Sum,
-      Operator::Slash | Operator::Asterisk => Precedence::Product,
-      _ => Precedence::Lowest,
+  pub fn from(operator: &str) -> Self {
+    match operator {
+      "=" | "+=" | "-=" | "*=" | "/=" => Precedence::Assign,
+      "==" | "!=" => Precedence::Equals,
+      ">" | "<" | ">=" | "<=" => Precedence::LessGreater,
+      "+" | "-" => Precedence::Sum,
+      "*" | "/" => Precedence::Product,
+      _ => unreachable!(),
     }
   }
 }
