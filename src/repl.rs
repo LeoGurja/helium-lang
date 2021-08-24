@@ -1,4 +1,4 @@
-use crate::{lexer::lex, parser::Parser, visitor::Visitor};
+use crate::{lexer::lexer, parser::Parser, visitor::Visitor};
 use std::io::{stdin, stdout, Write};
 
 pub fn repl() {
@@ -6,7 +6,7 @@ pub fn repl() {
   let visitor = Visitor::new();
   loop {
     let input = read();
-    let mut parser = Parser::new(lex(&input));
+    let mut parser = Parser::new(lexer(&input));
     let program = parser.parse();
 
     if parser.errors.len() == 0 {

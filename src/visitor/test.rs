@@ -15,9 +15,9 @@ fn visit_hash_index() {
         Expression::String("gurgel".to_owned()),
       )]),
     ),
-    Statement::Expression(Expression::index(
-      Expression::Id("x".to_owned()),
-      Expression::String("leonardo".to_owned()),
+    Statement::Expression(Expression::Index(
+      Box::new(Expression::Id("x".to_owned())),
+      Box::new(Expression::String("leonardo".to_owned())),
     )),
   ];
 
@@ -56,11 +56,18 @@ fn visit_while_loop() {
   let input = vec![
     Statement::VariableDeclaration("x".to_owned(), Expression::Integer(0)),
     Statement::while_loop(
-      Expression::infix("<", Expression::Id("x".to_owned()), Expression::Integer(10)),
-      Statement::Expression(Expression::infix(
-        "=",
-        Expression::Id("x".to_owned()),
-        Expression::infix("+", Expression::Id("x".to_owned()), Expression::Integer(1)),
+      Expression::Infix(
+        "<".to_owned(),
+        Box::new(Expression::Id("x".to_owned())),
+        Box::new(Expression::Integer(10)),
+      ),
+      Statement::Expression(Expression::IdAssignment(
+        "x".to_owned(),
+        Box::new(Expression::Infix(
+          "+".to_owned(),
+          Box::new(Expression::Id("x".to_owned())),
+          Box::new(Expression::Integer(1)),
+        )),
       )),
     ),
     Statement::Expression(Expression::Id("x".to_owned())),
@@ -82,10 +89,9 @@ fn visit_for_loop() {
         Expression::Integer(2),
         Expression::Integer(3),
       ]),
-      Statement::Expression(Expression::infix(
-        "=",
-        Expression::Id("x".to_owned()),
-        Expression::Id("i".to_owned()),
+      Statement::Expression(Expression::IdAssignment(
+        "x".to_owned(),
+        Box::new(Expression::Id("i".to_owned())),
       )),
     ),
     Statement::Expression(Expression::Id("x".to_owned())),
@@ -100,10 +106,9 @@ fn visit_for_loop() {
 fn visit_reassign() {
   let input = vec![
     Statement::VariableDeclaration("x".to_owned(), Expression::Integer(0)),
-    Statement::Expression(Expression::infix(
-      "=",
-      Expression::Id("x".to_owned()),
-      Expression::Integer(1),
+    Statement::Expression(Expression::IdAssignment(
+      "x".to_owned(),
+      Box::new(Expression::Integer(1)),
     )),
     Statement::Expression(Expression::Id("x".to_owned())),
   ];
@@ -115,13 +120,13 @@ fn visit_reassign() {
 
 #[test]
 fn visit_out_of_bounds_index() {
-  let input = vec![Statement::Expression(Expression::index(
-    Expression::Array(vec![
+  let input = vec![Statement::Expression(Expression::Index(
+    Box::new(Expression::Array(vec![
       Expression::Integer(1),
       Expression::Integer(2),
       Expression::Integer(3),
-    ]),
-    Expression::Integer(4),
+    ])),
+    Box::new(Expression::Integer(4)),
   ))];
 
   let result = visit(input);
@@ -131,13 +136,13 @@ fn visit_out_of_bounds_index() {
 
 #[test]
 fn visit_array_index() {
-  let input = vec![Statement::Expression(Expression::index(
-    Expression::Array(vec![
+  let input = vec![Statement::Expression(Expression::Index(
+    Box::new(Expression::Array(vec![
       Expression::Integer(1),
       Expression::Integer(2),
       Expression::Integer(3),
-    ]),
-    Expression::Integer(1),
+    ])),
+    Box::new(Expression::Integer(1)),
   ))];
 
   let result = visit(input);
@@ -161,10 +166,10 @@ fn visit_array() {
 
 #[test]
 fn visit_string_concat() {
-  let input = vec![Statement::Expression(Expression::infix(
-    "+",
-    Expression::String("leonardo".to_owned()),
-    Expression::String(" gurgel".to_owned()),
+  let input = vec![Statement::Expression(Expression::Infix(
+    "+".to_owned(),
+    Box::new(Expression::String("leonardo".to_owned())),
+    Box::new(Expression::String(" gurgel".to_owned())),
   ))];
 
   let result = visit(input);
@@ -186,14 +191,14 @@ fn visit_string() {
 #[test]
 fn visit_function_doesnt_have_frozen_parent() {
   let input = vec![
-    Statement::Expression(Expression::function(
-      Some("print_i"),
+    Statement::Expression(Expression::Function(
+      Some("print_i".to_owned()),
       vec![],
-      Statement::Expression(Expression::Id("i".to_owned())),
+      Rc::new(Statement::Expression(Expression::Id("i".to_owned()))),
     )),
     Statement::VariableDeclaration("i".to_owned(), Expression::Integer(5)),
-    Statement::Expression(Expression::call(
-      Expression::Id("print_i".to_owned()),
+    Statement::Expression(Expression::Call(
+      Box::new(Expression::Id("print_i".to_owned())),
       vec![],
     )),
   ];
@@ -206,28 +211,28 @@ fn visit_function_doesnt_have_frozen_parent() {
 #[test]
 fn visit_closure() {
   let input = vec![
-    Statement::Expression(Expression::function(
-      Some("adder"),
+    Statement::Expression(Expression::Function(
+      Some("adder".to_owned()),
       vec!["x".to_owned()],
-      Statement::Expression(Expression::function(
+      Rc::new(Statement::Expression(Expression::Function(
         None,
         vec!["y".to_owned()],
-        Statement::Expression(Expression::infix(
-          "+",
-          Expression::Id("x".to_owned()),
-          Expression::Id("y".to_owned()),
-        )),
-      )),
+        Rc::new(Statement::Expression(Expression::Infix(
+          "+".to_owned(),
+          Box::new(Expression::Id("x".to_owned())),
+          Box::new(Expression::Id("y".to_owned())),
+        ))),
+      ))),
     )),
     Statement::VariableDeclaration(
       "add_two".to_owned(),
-      Expression::call(
-        Expression::Id("adder".to_owned()),
+      Expression::Call(
+        Box::new(Expression::Id("adder".to_owned())),
         vec![Expression::Integer(2)],
       ),
     ),
-    Statement::Expression(Expression::call(
-      Expression::Id("add_two".to_owned()),
+    Statement::Expression(Expression::Call(
+      Box::new(Expression::Id("add_two".to_owned())),
       vec![Expression::Integer(3)],
     )),
   ];
@@ -241,13 +246,13 @@ fn visit_closure() {
 fn visit_function_with_outer_scope() {
   let input = vec![
     Statement::VariableDeclaration("i".to_owned(), Expression::Integer(5)),
-    Statement::Expression(Expression::function(
-      Some("print_i"),
+    Statement::Expression(Expression::Function(
+      Some("print_i".to_owned()),
       vec![],
-      Statement::Expression(Expression::Id("i".to_owned())),
+      Rc::new(Statement::Expression(Expression::Id("i".to_owned()))),
     )),
-    Statement::Expression(Expression::call(
-      Expression::Id("print_i".to_owned()),
+    Statement::Expression(Expression::Call(
+      Box::new(Expression::Id("print_i".to_owned())),
       vec![],
     )),
   ];
@@ -260,13 +265,13 @@ fn visit_function_with_outer_scope() {
 #[test]
 fn visit_function_call() {
   let input = vec![
-    Statement::Expression(Expression::function(
-      Some("identity"),
+    Statement::Expression(Expression::Function(
+      Some("identity".to_owned()),
       vec!["x".to_owned()],
-      Statement::Expression(Expression::Id("x".to_owned())),
+      Rc::new(Statement::Expression(Expression::Id("x".to_owned()))),
     )),
-    Statement::Expression(Expression::call(
-      Expression::Id("identity".to_owned()),
+    Statement::Expression(Expression::Call(
+      Box::new(Expression::Id("identity".to_owned())),
       vec![Expression::Integer(1)],
     )),
   ];
@@ -277,19 +282,19 @@ fn visit_function_call() {
 
 #[test]
 fn visit_function_declaration() {
-  let input = vec![Statement::Expression(Expression::function(
-    Some("name"),
+  let input = vec![Statement::Expression(Expression::Function(
+    Some("name".to_owned()),
     vec!["argv".to_owned()],
-    Statement::Expression(Expression::TRUE),
+    Rc::new(Statement::Expression(Expression::True)),
   ))];
 
   let result = visit(input);
   match result {
     Object::Function(args, block, ..) => {
-      assert_eq!(block, Rc::new(Statement::Expression(Expression::TRUE)));
+      assert_eq!(block, Rc::new(Statement::Expression(Expression::True)));
       assert_eq!(args, vec![("argv")]);
     }
-    _ => panic!("not a function"),
+    _ => panic!("not a Function"),
   }
 }
 
@@ -308,20 +313,20 @@ fn visit_integer_variable_declaration() {
 #[test]
 fn visit_boolean_variable_declaration() {
   let input = vec![
-    Statement::VariableDeclaration("x".to_owned(), Expression::TRUE),
+    Statement::VariableDeclaration("x".to_owned(), Expression::True),
     Statement::Expression(Expression::Id("x".to_owned())),
   ];
 
   let result = visit(input);
 
-  assert_eq!(result, Object::TRUE)
+  assert_eq!(result, Object::True)
 }
 
 #[test]
 fn visit_return() {
   let input = vec![
     Statement::Return(Expression::Integer(5)),
-    Statement::Expression(Expression::FALSE),
+    Statement::Expression(Expression::False),
   ];
 
   let result = visit(input);
@@ -333,7 +338,7 @@ fn visit_return() {
 fn visit_empty_return() {
   let input = vec![
     Statement::Return(Expression::Null),
-    Statement::Expression(Expression::TRUE),
+    Statement::Expression(Expression::True),
   ];
 
   let result = visit(input);
@@ -343,9 +348,9 @@ fn visit_empty_return() {
 
 #[test]
 fn visit_if() {
-  let input = vec![Statement::Expression(Expression::conditional(
-    Expression::TRUE,
-    Statement::Expression(Expression::Integer(5)),
+  let input = vec![Statement::Expression(Expression::Conditional(
+    Box::new(Expression::True),
+    Box::new(Statement::Expression(Expression::Integer(5))),
     None,
   ))];
 
@@ -356,10 +361,10 @@ fn visit_if() {
 
 #[test]
 fn visit_else() {
-  let input = vec![Statement::Expression(Expression::conditional(
-    Expression::FALSE,
-    Statement::Expression(Expression::Integer(5)),
-    Some(Statement::Expression(Expression::Integer(1))),
+  let input = vec![Statement::Expression(Expression::Conditional(
+    Box::new(Expression::False),
+    Box::new(Statement::Expression(Expression::Integer(5))),
+    Some(Box::new(Statement::Expression(Expression::Integer(1)))),
   ))];
 
   let result = visit(input);
@@ -369,9 +374,9 @@ fn visit_else() {
 
 #[test]
 fn visit_no_else() {
-  let input = vec![Statement::Expression(Expression::conditional(
-    Expression::FALSE,
-    Statement::Expression(Expression::Integer(5)),
+  let input = vec![Statement::Expression(Expression::Conditional(
+    Box::new(Expression::False),
+    Box::new(Statement::Expression(Expression::Integer(5))),
     None,
   ))];
 
@@ -382,10 +387,10 @@ fn visit_no_else() {
 
 #[test]
 fn visit_infix_plus() {
-  let input = vec![Statement::Expression(Expression::infix(
-    "+",
-    Expression::Integer(5),
-    Expression::Integer(5),
+  let input = vec![Statement::Expression(Expression::Infix(
+    "+".to_owned(),
+    Box::new(Expression::Integer(5)),
+    Box::new(Expression::Integer(5)),
   ))];
 
   let result = visit(input);
@@ -395,88 +400,88 @@ fn visit_infix_plus() {
 
 #[test]
 fn visit_infix_greater_than() {
-  let input = vec![Statement::Expression(Expression::infix(
-    ">",
-    Expression::Integer(5),
-    Expression::Integer(5),
+  let input = vec![Statement::Expression(Expression::Infix(
+    ">".to_owned(),
+    Box::new(Expression::Integer(5)),
+    Box::new(Expression::Integer(5)),
   ))];
 
   let result = visit(input);
 
-  assert_eq!(result, Object::FALSE)
+  assert_eq!(result, Object::False)
 }
 
 #[test]
 fn visit_infix_less_than() {
-  let input = vec![Statement::Expression(Expression::infix(
-    "<",
-    Expression::Integer(1),
-    Expression::Integer(2),
+  let input = vec![Statement::Expression(Expression::Infix(
+    "<".to_owned(),
+    Box::new(Expression::Integer(1)),
+    Box::new(Expression::Integer(2)),
   ))];
 
   let result = visit(input);
 
-  assert_eq!(result, Object::TRUE)
+  assert_eq!(result, Object::True)
 }
 
 #[test]
 fn visit_infix_equals_on_integer() {
-  let input = vec![Statement::Expression(Expression::infix(
-    "==",
-    Expression::Integer(5),
-    Expression::Integer(5),
+  let input = vec![Statement::Expression(Expression::Infix(
+    "==".to_owned(),
+    Box::new(Expression::Integer(5)),
+    Box::new(Expression::Integer(5)),
   ))];
 
   let result = visit(input);
 
-  assert_eq!(result, Object::TRUE)
+  assert_eq!(result, Object::True)
 }
 
 #[test]
 fn visit_infix_not_equals_on_integer() {
-  let input = vec![Statement::Expression(Expression::infix(
-    "!=",
-    Expression::Integer(5),
-    Expression::Integer(5),
+  let input = vec![Statement::Expression(Expression::Infix(
+    "!=".to_owned(),
+    Box::new(Expression::Integer(5)),
+    Box::new(Expression::Integer(5)),
   ))];
 
   let result = visit(input);
 
-  assert_eq!(result, Object::FALSE)
+  assert_eq!(result, Object::False)
 }
 
 #[test]
 fn visit_infix_not_equals_on_boolean() {
-  let input = vec![Statement::Expression(Expression::infix(
-    "!=",
-    Expression::TRUE,
-    Expression::FALSE,
+  let input = vec![Statement::Expression(Expression::Infix(
+    "!=".to_owned(),
+    Box::new(Expression::True),
+    Box::new(Expression::False),
   ))];
 
   let result = visit(input);
 
-  assert_eq!(result, Object::TRUE)
+  assert_eq!(result, Object::True)
 }
 
 #[test]
 fn visit_infix_equals_on_boolean() {
-  let input = vec![Statement::Expression(Expression::infix(
-    "==",
-    Expression::TRUE,
-    Expression::FALSE,
+  let input = vec![Statement::Expression(Expression::Infix(
+    "==".to_owned(),
+    Box::new(Expression::True),
+    Box::new(Expression::False),
   ))];
 
   let result = visit(input);
 
-  assert_eq!(result, Object::FALSE)
+  assert_eq!(result, Object::False)
 }
 
 #[test]
 fn visit_infix_minus() {
-  let input = vec![Statement::Expression(Expression::infix(
-    "-",
-    Expression::Integer(5),
-    Expression::Integer(5),
+  let input = vec![Statement::Expression(Expression::Infix(
+    "-".to_owned(),
+    Box::new(Expression::Integer(5)),
+    Box::new(Expression::Integer(5)),
   ))];
 
   let result = visit(input);
@@ -486,10 +491,10 @@ fn visit_infix_minus() {
 
 #[test]
 fn visit_infix_multiply() {
-  let input = vec![Statement::Expression(Expression::infix(
-    "*",
-    Expression::Integer(5),
-    Expression::Integer(5),
+  let input = vec![Statement::Expression(Expression::Infix(
+    "*".to_owned(),
+    Box::new(Expression::Integer(5)),
+    Box::new(Expression::Integer(5)),
   ))];
 
   let result = visit(input);
@@ -499,10 +504,10 @@ fn visit_infix_multiply() {
 
 #[test]
 fn visit_infix_divide() {
-  let input = vec![Statement::Expression(Expression::infix(
-    "/",
-    Expression::Integer(10),
-    Expression::Integer(2),
+  let input = vec![Statement::Expression(Expression::Infix(
+    "/".to_owned(),
+    Box::new(Expression::Integer(10)),
+    Box::new(Expression::Integer(2)),
   ))];
 
   let result = visit(input);
@@ -512,9 +517,9 @@ fn visit_infix_divide() {
 
 #[test]
 fn visit_minus() {
-  let input = vec![Statement::Expression(Expression::prefix(
-    "-",
-    Expression::Integer(5),
+  let input = vec![Statement::Expression(Expression::Prefix(
+    "-".to_owned(),
+    Box::new(Expression::Integer(5)),
   ))];
 
   let result = visit(input);
@@ -524,35 +529,38 @@ fn visit_minus() {
 
 #[test]
 fn visit_bang_on_boolean() {
-  let input = vec![Statement::Expression(Expression::prefix(
-    "!",
-    Expression::TRUE,
+  let input = vec![Statement::Expression(Expression::Prefix(
+    "!".to_owned(),
+    Box::new(Expression::True),
   ))];
 
   let result = visit(input);
-  assert_eq!(result, Object::FALSE)
+  assert_eq!(result, Object::False)
 }
 
 #[test]
 fn visit_bang_on_integer() {
-  let input = vec![Statement::Expression(Expression::prefix(
-    "!",
-    Expression::Integer(5),
+  let input = vec![Statement::Expression(Expression::Prefix(
+    "!".to_owned(),
+    Box::new(Expression::Integer(5)),
   ))];
 
   let result = visit(input);
-  assert_eq!(result, Object::FALSE)
+  assert_eq!(result, Object::False)
 }
 
 #[test]
 fn visit_multiple_bangs() {
-  let input = vec![Statement::Expression(Expression::prefix(
-    "!",
-    Expression::prefix("!", Expression::TRUE),
+  let input = vec![Statement::Expression(Expression::Prefix(
+    "!".to_owned(),
+    Box::new(Expression::Prefix(
+      "!".to_owned(),
+      Box::new(Expression::True),
+    )),
   ))];
 
   let result = visit(input);
-  assert_eq!(result, Object::TRUE)
+  assert_eq!(result, Object::True)
 }
 
 #[test]
@@ -564,10 +572,10 @@ fn visit_integer_expression() {
 
 #[test]
 fn visit_boolean_expression() {
-  let input = vec![Statement::Expression(Expression::TRUE)];
+  let input = vec![Statement::Expression(Expression::True)];
 
   let result = visit(input);
-  assert_eq!(result, Object::Boolean(true))
+  assert_eq!(result, Object::True)
 }
 
 fn visit(input: Vec<Statement>) -> Object {

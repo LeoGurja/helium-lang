@@ -5,19 +5,21 @@ pub use logos::Lexer;
 use logos::Logos;
 
 #[derive(Logos, Debug, PartialEq)]
-pub enum Token<'a> {
+pub enum Token<'source> {
   // Values
   #[regex(r"[a-zA-Z_][a-zA-Z\d_]*")]
-  Id(&'a str),
+  Id(&'source str),
   #[regex(r"\d+", |lex| lex.slice().parse())]
   Integer(i64),
-  #[regex(r#""(?:\\.|[^"\\])*""#, remove_quotes)]
-  #[regex(r#"'(?:\\.|[^'\\])*'"#, remove_quotes)]
-  String(&'a str),
+  #[regex(r#""(?:\\.|[^"\\])*""#, collect_string)]
+  #[regex(r#"'(?:\\.|[^'\\])*'"#, collect_string)]
+  String(String),
 
   // Operators
-  #[regex(r"(\.|([+\-*/<>!=]=?))")]
-  Operator(&'a str),
+  #[regex(r"[+\-/*]?=")]
+  Assign(&'source str),
+  #[regex(r"([+\-/*]|[<>!=]=?)")]
+  Operator(&'source str),
 
   // Delimiters
   #[token(",")]
@@ -68,10 +70,33 @@ pub enum Token<'a> {
   Eof,
 }
 
-fn remove_quotes<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<&'a str> {
-  Some(&lex.slice()[1..lex.slice().len() - 1])
+pub fn lexer<'source>(source: &'source str) -> Lexer<'source, Token<'source>> {
+  Token::lexer(source)
 }
 
-pub fn lex<'a>(input: &'a str) -> Lexer<'a, Token> {
-  Token::lexer(input)
+fn collect_string<'source>(lex: &mut Lexer<'source, Token<'source>>) -> Option<String> {
+  let mut string = "".to_owned();
+  let mut escape_next_character = false;
+  for character in lex.slice()[1..lex.slice().len() - 1].chars() {
+    if escape_next_character {
+      println!("escaping: {}", character);
+      match character {
+        c @ '\\' | c @ '\'' | c @ '"' => string.push(c),
+        'n' => string.push('\n'),
+        't' => string.push('\t'),
+        'r' => string.push('\r'),
+        '0' => string.push('\0'),
+        _ => return None,
+      }
+      escape_next_character = false;
+      continue;
+    }
+    if character == '\\' {
+      escape_next_character = true;
+    } else {
+      escape_next_character = false;
+      string.push(character);
+    }
+  }
+  Some(string)
 }

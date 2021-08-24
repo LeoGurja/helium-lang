@@ -1,5 +1,5 @@
 use crate::{
-  ast::Statement, env::Env, error::Error, lexer::lex, object::Object, parser::Parser,
+  ast::Statement, env::Env, error::Error, lexer::lexer, object::Object, parser::Parser,
   visitor::Visitor,
 };
 use std::fs;
@@ -27,7 +27,7 @@ pub fn import(env: &Env, filename: &str) -> Result<(), Vec<Error>> {
 }
 
 fn parse(input: &str) -> Result<Vec<Statement>, Vec<Error>> {
-  let mut parser = Parser::new(lex(input));
+  let mut parser = Parser::new(lexer(input));
   let program = parser.parse();
   if parser.errors.len() == 0 {
     Ok(program)

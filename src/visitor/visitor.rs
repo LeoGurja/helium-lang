@@ -81,7 +81,7 @@ impl Visitor {
   }
 
   fn visit_return(&self, expression: &Expression) -> Result<Object> {
-    Ok(Object::r#return(self.visit_expression(expression)?))
+    Ok(Object::Return(Box::new(self.visit_expression(expression)?)))
   }
 
   fn visit_expression(&self, expression: &Expression) -> Result<Object> {
@@ -90,7 +90,8 @@ impl Visitor {
       Expression::Hash(hash) => self.visit_hash(hash),
       Expression::Index(indexed, indexer) => self.visit_index(indexed, indexer),
       Expression::Array(expressions) => Ok(Object::Array(self.visit_expressions(expressions)?)),
-      Expression::Boolean(value) => Ok(Object::boolean(*value)),
+      Expression::True => Ok(Object::True),
+      Expression::False => Ok(Object::False),
       Expression::Integer(value) => Ok(Object::Integer(*value)),
       Expression::Call(function, args) => self.visit_call(&function, args),
       Expression::Function(name, args, block) => self.visit_function_declaration(name, args, block),
@@ -122,7 +123,6 @@ impl Visitor {
     let mut hash = HashMap::new();
     for (key_expression, value_expression) in key_values {
       let key = match self.visit_expression(&key_expression)? {
-        Object::Boolean(b) => b.to_string(),
         Object::Integer(i) => i.to_string(),
         Object::String(s) => s,
         obj => return Err(Error::index_error(Object::Hash(hash), obj)),
@@ -134,15 +134,19 @@ impl Visitor {
   }
 
   fn visit_call(&self, function: &Expression, arg_values: &[Expression]) -> Result<Object> {
-    let function = self.visit_expression(function)?;
-    let args = self.visit_expressions(arg_values)?;
+    self.execute_call(
+      &self.visit_expression(function)?,
+      self.visit_expressions(arg_values)?,
+    )
+  }
 
-    match function {
+  fn execute_call(&self, obj: &Object, args: Vec<Object>) -> Result<Object> {
+    match obj {
       Object::Function(arg_names, block, env) => {
-        self.visit_function_call(arg_names, args, block.as_ref(), env)
+        self.visit_function_call(arg_names, &args, block.as_ref(), env.clone())
       }
       Object::BuiltIn(function) => function(args),
-      _ => Err(Error::call_error(function)),
+      _ => Err(Error::call_error(obj.clone())),
     }
   }
 
@@ -159,8 +163,8 @@ impl Visitor {
 
   fn visit_function_call(
     &self,
-    arg_names: Vec<String>,
-    arg_values: Vec<Object>,
+    arg_names: &[String],
+    arg_values: &[Object],
     block: &Statement,
     env: env::Env,
   ) -> Result<Object> {
@@ -191,8 +195,9 @@ impl Visitor {
   }
 
   fn visit_variable(&self, name: &str) -> Result<Object> {
-    match self.env.get(name) {
-      Some(value) => Ok(value),
+    let value = self.env.get(name);
+    match value {
+      Some(value) => Ok(value.clone()),
       None => Err(Error::undefined_variable(name)),
     }
   }
@@ -219,67 +224,30 @@ impl Visitor {
     left_expression: &Expression,
     right_expression: &Expression,
   ) -> Result<Object> {
+    let left = self.visit_expression(left_expression)?;
     let right = self.visit_expression(right_expression)?;
 
-    if infix == "=" {
-      match left_expression {
-        Expression::Id(id) => {
-          self.env.update(&id, right);
-        }
-        Expression::Index(indexed, index) => {
-          self.visit_index_assign(indexed, index, right)?;
-        }
-        _ => {
-          return Err(Error::cannot_assign(
-            self.visit_expression(left_expression)?,
-          ))
-        }
-      };
-      return Ok(Object::Null);
-    }
-
-    let left = self.visit_expression(left_expression)?;
-    Ok(match infix {
-      "+" => left + right,
-      "*" => left * right,
-      "==" => Object::boolean(left == right),
-      "!=" => Object::boolean(left != right),
-      ">" => Object::boolean(left > right),
-      "<" => Object::boolean(left < right),
-      "-" => left - right,
-      "/" => left / right,
-      _ => return Err(Error::unknown_operator(infix, left)),
-    })
-  }
-
-  fn visit_index_assign(
-    &self,
-    indexed: &Box<Expression>,
-    index: &Box<Expression>,
-    value: Object,
-  ) -> Result<Object> {
-    match (
-      self.visit_expression(&indexed)?,
-      self.visit_expression(&index)?,
-    ) {
-      (Object::Array(mut arr), Object::Integer(int)) => {
-        arr[int as usize] = value;
-        Ok(Object::Null)
-      }
-      (Object::Hash(mut hash), Object::String(string)) => {
-        hash.insert(string, value);
-        Ok(Object::Null)
-      }
-      (left, right) => Err(Error::index_error(left, right)),
+    match infix {
+      "+" => left.add(right),
+      "*" => left.multiply(right),
+      "-" => left.subtract(right),
+      "/" => left.divide(right),
+      "==" => Ok(Object::boolean(left == right)),
+      "!=" => Ok(Object::boolean(left != right)),
+      ">" => Ok(Object::boolean(left > right)),
+      "<" => Ok(Object::boolean(left < right)),
+      "<=" => Ok(Object::boolean(left <= right)),
+      ">=" => Ok(Object::boolean(left >= right)),
+      _ => Err(Error::unknown_operator(infix.to_string(), left)),
     }
   }
 
   fn visit_prefix(&self, prefix: &str, expression: &Expression) -> Result<Object> {
     let obj = self.visit_expression(expression)?;
     Ok(match prefix {
-      "!" => !obj,
-      "-" => -obj,
-      _ => return Err(Error::unknown_operator(prefix, obj)),
+      "!" => obj.not(),
+      "-" => obj.negate()?,
+      _ => return Err(Error::unknown_operator(prefix.to_string(), obj)),
     })
   }
 }

@@ -1,7 +1,7 @@
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
 pub enum Precedence {
   Lowest,
-  Assign,      // =
+  Assign,      // += | -= | *= | /= | =
   Equals,      // == | !=
   LessGreater, // >  | < | <= | >=
   Sum,         // +  | -
@@ -12,13 +12,12 @@ pub enum Precedence {
 }
 
 impl Precedence {
-  pub fn from(operator: &str) -> Self {
-    match operator {
-      "=" | "+=" | "-=" | "*=" | "/=" => Precedence::Assign,
-      "==" | "!=" => Precedence::Equals,
-      ">" | "<" | ">=" | "<=" => Precedence::LessGreater,
-      "+" | "-" => Precedence::Sum,
-      "*" | "/" => Precedence::Product,
+  pub fn from(op: &str) -> Self {
+    match op {
+      "==" | "!=" => Self::Equals,
+      "<" | ">" | "<=" | ">=" => Self::LessGreater,
+      "+" | "-" => Self::Sum,
+      "*" | "/" => Self::Product,
       _ => unreachable!(),
     }
   }

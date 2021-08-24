@@ -22,7 +22,7 @@ fn no_semicolons() {
   let expected = vec![
     Token::Let,
     Token::Id("x"),
-    Token::Operator("="),
+    Token::Assign("="),
     Token::Integer(0),
     Token::Function,
     Token::Id("main"),
@@ -39,7 +39,7 @@ fn no_semicolons() {
     Token::RightBracket,
     Token::LeftBrace,
     Token::Id("x"),
-    Token::Operator("="),
+    Token::Assign("="),
     Token::Id("x"),
     Token::Operator("+"),
     Token::Id("i"),
@@ -58,7 +58,7 @@ fn no_semicolons() {
     Token::LeftBrace,
     Token::Id("print"),
     Token::LeftParen,
-    Token::String("too small"),
+    Token::String("too small".to_owned()),
     Token::RightParen,
     Token::RightBrace,
     Token::Integer(0),
@@ -75,7 +75,7 @@ fn hash_indexes() {
   let expected = vec![
     Token::Id("hash"),
     Token::LeftBracket,
-    Token::String("leonardo"),
+    Token::String("leonardo".to_owned()),
     Token::RightBracket,
   ];
 
@@ -89,15 +89,15 @@ fn hashes() {
   let expected = vec![
     Token::Let,
     Token::Id("x"),
-    Token::Operator("="),
+    Token::Assign("="),
     Token::LeftBrace,
-    Token::String("name"),
+    Token::String("name".to_owned()),
     Token::Colon,
-    Token::String("leonardo"),
+    Token::String("leonardo".to_owned()),
     Token::Comma,
-    Token::String("last_name"),
+    Token::String("last_name".to_owned()),
     Token::Colon,
-    Token::String("ferreira"),
+    Token::String("ferreira".to_owned()),
     Token::Comma,
     Token::Integer(1),
     Token::Colon,
@@ -110,21 +110,21 @@ fn hashes() {
 
 #[test]
 fn while_loops() {
-  let input = "let x = 0; while x < 10 { x = x + 1 }";
+  let input = "let x = 0; while x <= 10 { x = x + 1 }";
 
   let expected = vec![
     Token::Let,
     Token::Id("x"),
-    Token::Operator("="),
+    Token::Assign("="),
     Token::Integer(0),
     Token::Semicolon,
     Token::While,
     Token::Id("x"),
-    Token::Operator("<"),
+    Token::Operator("<="),
     Token::Integer(10),
-    Token::LeftBrace,
+    Token::Operator(">"),
     Token::Id("x"),
-    Token::Operator("="),
+    Token::Assign("="),
     Token::Id("x"),
     Token::Operator("+"),
     Token::Integer(1),
@@ -152,7 +152,7 @@ fn for_loops() {
     Token::LeftBrace,
     Token::Let,
     Token::Id("x"),
-    Token::Operator("="),
+    Token::Assign("="),
     Token::Id("a"),
     Token::Operator("+"),
     Token::Integer(1),
@@ -196,9 +196,9 @@ fn array() {
     Token::Comma,
     Token::Integer(3),
     Token::Comma,
-    Token::String("leonardo"),
+    Token::String("leonardo".to_owned()),
     Token::Comma,
-    Token::String("gurgel"),
+    Token::String("gurgel".to_owned()),
     Token::RightBracket,
   ];
 
@@ -209,7 +209,7 @@ fn array() {
 fn string() {
   let input = "\"leonardo gurgel\"";
 
-  let expected = vec![Token::String("leonardo gurgel")];
+  let expected = vec![Token::String("leonardo gurgel".to_owned())];
 
   compare(input, expected)
 }
@@ -249,7 +249,7 @@ fn keywords() {
     Token::Integer(5),
     Token::Operator("<"),
     Token::Integer(10),
-    Token::RightParen,
+    Token::Operator(">"),
     Token::LeftBrace,
     Token::Return,
     Token::True,
@@ -305,17 +305,17 @@ fn code() {
   let expected_tokens = vec![
     Token::Let,
     Token::Id("five"),
-    Token::Operator("="),
+    Token::Assign("="),
     Token::Integer(5),
     Token::Semicolon,
     Token::Let,
     Token::Id("ten"),
-    Token::Operator("="),
+    Token::Assign("="),
     Token::Integer(10),
     Token::Semicolon,
     Token::Let,
     Token::Id("add"),
-    Token::Operator("="),
+    Token::Assign("="),
     Token::Function,
     Token::LeftParen,
     Token::Id("x"),
@@ -331,7 +331,7 @@ fn code() {
     Token::Semicolon,
     Token::Let,
     Token::Id("result"),
-    Token::Operator("="),
+    Token::Assign("="),
     Token::Id("add"),
     Token::LeftParen,
     Token::Id("five"),
@@ -349,7 +349,7 @@ fn symbols() {
   let input = "=+(){},;";
 
   let expected_tokens = vec![
-    Token::Operator("="),
+    Token::Assign("="),
     Token::Operator("+"),
     Token::LeftParen,
     Token::RightParen,
@@ -363,7 +363,7 @@ fn symbols() {
 }
 
 fn compare(input: &str, expected_tokens: Vec<Token>) {
-  let mut lexer = lex(input);
+  let mut lexer = Token::lexer(input);
 
   for expected in expected_tokens {
     let actual = lexer.next();

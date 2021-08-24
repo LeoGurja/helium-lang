@@ -45,7 +45,7 @@ fn print_boolean() {
 #[test]
 fn print_return() {
   assert_eq!(
-    Object::r#return(Object::String("leonardo".to_owned())).to_string(),
+    Object::Return(Box::new(Object::String("leonardo".to_owned()))).to_string(),
     "'leonardo'".to_owned()
   )
 }

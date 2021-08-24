@@ -1,6 +1,7 @@
-mod ast;
+mod expression;
 mod precedence;
+mod statement;
 
-pub use ast::Expression;
-pub use ast::Statement;
+pub use expression::Expression;
 pub use precedence::Precedence;
+pub use statement::Statement;

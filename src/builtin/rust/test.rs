@@ -1,4 +1,6 @@
-use crate::{ast::Statement, lexer::lex, object::Object, parser::Parser, visitor::Visitor};
+use crate::lexer::Token;
+use crate::{ast::Statement, object::Object, parser::Parser, visitor::Visitor};
+use logos::Logos;
 
 #[test]
 fn array_push() {
@@ -89,7 +91,7 @@ fn print() {
 
 fn visit(input: &str) -> Object {
   let visitor = Visitor::new();
-  let program = parse(Parser::new(lex(input)));
+  let program = parse(Parser::new(Token::lexer(input)));
   visitor.visit(&program).unwrap()
 }
 

@@ -1,4 +1,4 @@
-use crate::{builtin, error::Error, object::Object};
+use crate::{builtin, object::Object};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 pub type Env = Rc<Environment>;
@@ -33,18 +33,7 @@ impl Environment {
         Some(parent) => parent.get(key),
         None => None,
       },
-      Some(obj) => Some(obj.clone()),
-    }
-  }
-
-  pub fn update(&self, key: &str, value: Object) {
-    if self.store.borrow().contains_key(key) {
-      self.set(key, value)
-    } else {
-      match &self.parent {
-        Some(parent) => parent.update(key, value),
-        None => Error::undefined_variable(key).raise(),
-      }
+      some => some.cloned(),
     }
   }
 

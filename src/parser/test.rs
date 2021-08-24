@@ -1,8 +1,8 @@
 use super::parser::*;
-use crate::{
-  ast::{Expression, Statement},
-  lexer::lex,
-};
+use crate::ast::{Expression, Statement};
+use crate::lexer::Token;
+use logos::Logos;
+use std::rc::Rc;
 
 #[test]
 fn hash_indexes() {
@@ -10,9 +10,9 @@ fn hash_indexes() {
 
   let program = parse(input);
 
-  let expected = vec![Statement::Expression(Expression::index(
-    Expression::Id("hash".to_owned()),
-    Expression::String("leonardo".to_owned()),
+  let expected = vec![Statement::Expression(Expression::Index(
+    Box::new(Expression::Id("hash".to_owned())),
+    Box::new(Expression::String("leonardo".to_owned())),
   ))];
 
   compare(program, expected)
@@ -49,10 +49,13 @@ fn reassign() {
 
   let expected = vec![
     Statement::VariableDeclaration("x".to_owned(), Expression::Integer(0)),
-    Statement::Expression(Expression::infix(
-      "=",
-      Expression::Id("x".to_owned()),
-      Expression::infix("+", Expression::Id("x".to_owned()), Expression::Integer(1)),
+    Statement::Expression(Expression::IdAssignment(
+      "x".to_owned(),
+      Box::new(Expression::Infix(
+        "+".to_owned(),
+        Box::new(Expression::Id("x".to_owned())),
+        Box::new(Expression::Integer(1)),
+      )),
     )),
   ];
 
@@ -68,11 +71,18 @@ fn while_statements() {
   let expected = vec![
     Statement::VariableDeclaration("x".to_owned(), Expression::Integer(0)),
     Statement::while_loop(
-      Expression::infix("<", Expression::Id("x".to_owned()), Expression::Integer(10)),
-      Statement::Expression(Expression::infix(
-        "=",
-        Expression::Id("x".to_owned()),
-        Expression::infix("+", Expression::Id("x".to_owned()), Expression::Integer(1)),
+      Expression::Infix(
+        "<".to_owned(),
+        Box::new(Expression::Id("x".to_owned())),
+        Box::new(Expression::Integer(10)),
+      ),
+      Statement::Expression(Expression::IdAssignment(
+        "x".to_owned(),
+        Box::new(Expression::Infix(
+          "+".to_owned(),
+          Box::new(Expression::Id("x".to_owned())),
+          Box::new(Expression::Integer(1)),
+        )),
       )),
     ),
   ];
@@ -89,11 +99,18 @@ fn while_blocks() {
   let expected = vec![
     Statement::VariableDeclaration("x".to_owned(), Expression::Integer(0)),
     Statement::while_loop(
-      Expression::infix("<", Expression::Id("x".to_owned()), Expression::Integer(10)),
-      Statement::Block(vec![Statement::Expression(Expression::infix(
-        "=",
-        Expression::Id("x".to_owned()),
-        Expression::infix("+", Expression::Id("x".to_owned()), Expression::Integer(1)),
+      Expression::Infix(
+        "<".to_owned(),
+        Box::new(Expression::Id("x".to_owned())),
+        Box::new(Expression::Integer(10)),
+      ),
+      Statement::Block(vec![Statement::Expression(Expression::IdAssignment(
+        "x".to_owned(),
+        Box::new(Expression::Infix(
+          "+".to_owned(),
+          Box::new(Expression::Id("x".to_owned())),
+          Box::new(Expression::Integer(1)),
+        )),
       ))]),
     ),
   ];
@@ -116,7 +133,11 @@ fn for_statements() {
     ]),
     Statement::VariableDeclaration(
       "x".to_owned(),
-      Expression::infix("+", Expression::Id("a".to_owned()), Expression::Integer(1)),
+      Expression::Infix(
+        "+".to_owned(),
+        Box::new(Expression::Id("a".to_owned())),
+        Box::new(Expression::Integer(1)),
+      ),
     ),
   )];
 
@@ -138,7 +159,11 @@ fn for_blocks() {
     ]),
     Statement::Block(vec![Statement::VariableDeclaration(
       "x".to_owned(),
-      Expression::infix("+", Expression::Id("a".to_owned()), Expression::Integer(1)),
+      Expression::Infix(
+        "+".to_owned(),
+        Box::new(Expression::Id("a".to_owned())),
+        Box::new(Expression::Integer(1)),
+      ),
     )]),
   )];
 
@@ -151,9 +176,13 @@ fn array_expressions() {
 
   let program = parse(input);
 
-  let expected = vec![Statement::Expression(Expression::index(
-    Expression::Id("myArray".to_owned()),
-    Expression::infix("+", Expression::Integer(1), Expression::Integer(1)),
+  let expected = vec![Statement::Expression(Expression::Index(
+    Box::new(Expression::Id("myArray".to_owned())),
+    Box::new(Expression::Infix(
+      "+".to_owned(),
+      Box::new(Expression::Integer(1)),
+      Box::new(Expression::Integer(1)),
+    )),
   ))];
 
   compare(program, expected)
@@ -201,45 +230,45 @@ fn infix_expressions() {
   let program = parse(input);
 
   let expected: Vec<Statement> = vec![
-    Statement::from(Expression::infix(
-      "+",
-      Expression::Integer(5),
-      Expression::Integer(5),
+    Statement::Expression(Expression::Infix(
+      "+".to_owned(),
+      Box::new(Expression::Integer(5)),
+      Box::new(Expression::Integer(5)),
     )),
-    Statement::from(Expression::infix(
-      "-",
-      Expression::Integer(5),
-      Expression::Integer(5),
+    Statement::Expression(Expression::Infix(
+      "-".to_owned(),
+      Box::new(Expression::Integer(5)),
+      Box::new(Expression::Integer(5)),
     )),
-    Statement::from(Expression::infix(
-      "*",
-      Expression::Integer(5),
-      Expression::Integer(5),
+    Statement::Expression(Expression::Infix(
+      "*".to_owned(),
+      Box::new(Expression::Integer(5)),
+      Box::new(Expression::Integer(5)),
     )),
-    Statement::from(Expression::infix(
-      "/",
-      Expression::Integer(5),
-      Expression::Integer(5),
+    Statement::Expression(Expression::Infix(
+      "/".to_owned(),
+      Box::new(Expression::Integer(5)),
+      Box::new(Expression::Integer(5)),
     )),
-    Statement::from(Expression::infix(
-      ">",
-      Expression::Integer(5),
-      Expression::Integer(5),
+    Statement::Expression(Expression::Infix(
+      ">".to_owned(),
+      Box::new(Expression::Integer(5)),
+      Box::new(Expression::Integer(5)),
     )),
-    Statement::from(Expression::infix(
-      "<",
-      Expression::Integer(5),
-      Expression::Integer(5),
+    Statement::Expression(Expression::Infix(
+      "<".to_owned(),
+      Box::new(Expression::Integer(5)),
+      Box::new(Expression::Integer(5)),
     )),
-    Statement::from(Expression::infix(
-      "==",
-      Expression::Integer(5),
-      Expression::Integer(5),
+    Statement::Expression(Expression::Infix(
+      "==".to_owned(),
+      Box::new(Expression::Integer(5)),
+      Box::new(Expression::Integer(5)),
     )),
-    Statement::from(Expression::infix(
-      "!=",
-      Expression::Integer(5),
-      Expression::Integer(5),
+    Statement::Expression(Expression::Infix(
+      "!=".to_owned(),
+      Box::new(Expression::Integer(5)),
+      Box::new(Expression::Integer(5)),
     )),
   ];
 
@@ -254,8 +283,14 @@ fn prefix_expressions() {
   let program = parse(input);
 
   let expected = vec![
-    Statement::Expression(Expression::prefix("!", Expression::Integer(5))),
-    Statement::Expression(Expression::prefix("-", Expression::Integer(15))),
+    Statement::Expression(Expression::Prefix(
+      "!".to_owned(),
+      Box::new(Expression::Integer(5)),
+    )),
+    Statement::Expression(Expression::Prefix(
+      "-".to_owned(),
+      Box::new(Expression::Integer(15)),
+    )),
   ];
 
   compare(program, expected)
@@ -306,14 +341,14 @@ fn function_declarations_with_args() {
 
   let program = parse(input);
 
-  let expected = vec![Statement::Expression(Expression::function(
-    Some("add"),
+  let expected = vec![Statement::Expression(Expression::Function(
+    Some("add".to_owned()),
     vec!["a".to_owned(), "b".to_owned()],
-    Statement::Expression(Expression::infix(
-      "+",
-      Expression::Id("a".to_owned()),
-      Expression::Id("b".to_owned()),
-    )),
+    Rc::new(Statement::Expression(Expression::Infix(
+      "+".to_owned(),
+      Box::new(Expression::Id("a".to_owned())),
+      Box::new(Expression::Id("b".to_owned())),
+    ))),
   ))];
 
   compare(program, expected)
@@ -327,14 +362,16 @@ fn function_blocks_with_args() {
 
   let program = parse(input);
 
-  let expected = vec![Statement::Expression(Expression::function(
-    Some("add"),
+  let expected = vec![Statement::Expression(Expression::Function(
+    Some("add".to_owned()),
     vec!["a".to_owned(), "b".to_owned()],
-    Statement::Block(vec![Statement::Expression(Expression::infix(
-      "+",
-      Expression::Id("a".to_owned()),
-      Expression::Id("b".to_owned()),
-    ))]),
+    Rc::new(Statement::Block(vec![Statement::Expression(
+      Expression::Infix(
+        "+".to_owned(),
+        Box::new(Expression::Id("a".to_owned())),
+        Box::new(Expression::Id("b".to_owned())),
+      ),
+    )])),
   ))];
 
   compare(program, expected)
@@ -346,10 +383,10 @@ fn function_declarations() {
 
   let program = parse(input);
 
-  let expected = vec![Statement::Expression(Expression::function(
-    Some("main"),
+  let expected = vec![Statement::Expression(Expression::Function(
+    Some("main".to_owned()),
     vec![],
-    Statement::Expression(Expression::Integer(0)),
+    Rc::new(Statement::Expression(Expression::Integer(0))),
   ))];
 
   compare(program, expected)
@@ -363,10 +400,12 @@ fn function_blocks() {
 
   let program = parse(input);
 
-  let expected = vec![Statement::Expression(Expression::function(
-    Some("main"),
+  let expected = vec![Statement::Expression(Expression::Function(
+    Some("main".to_owned()),
     vec![],
-    Statement::Block(vec![Statement::Expression(Expression::Integer(0))]),
+    Rc::new(Statement::Block(vec![Statement::Expression(
+      Expression::Integer(0),
+    )])),
   ))];
 
   compare(program, expected)
@@ -377,8 +416,8 @@ fn call_expressions() {
   let input = "add(3, 5);";
 
   let program = parse(input);
-  let expected = vec![Statement::Expression(Expression::call(
-    Expression::Id("add".to_owned()),
+  let expected = vec![Statement::Expression(Expression::Call(
+    Box::new(Expression::Id("add".to_owned())),
     vec![Expression::Integer(3), Expression::Integer(5)],
   ))];
 
@@ -391,25 +430,27 @@ fn if_expressions() {
     let result = if (x > y) x else y";
 
   let expected = vec![
-    Statement::Expression(Expression::conditional(
-      Expression::infix(
-        ">",
-        Expression::Id("x".to_owned()),
-        Expression::Id("y".to_owned()),
-      ),
-      Statement::Return(Expression::Id("x".to_owned())),
-      Some(Statement::Return(Expression::Id("y".to_owned()))),
+    Statement::Expression(Expression::Conditional(
+      Box::new(Expression::Infix(
+        ">".to_owned(),
+        Box::new(Expression::Id("x".to_owned())),
+        Box::new(Expression::Id("y".to_owned())),
+      )),
+      Box::new(Statement::Return(Expression::Id("x".to_owned()))),
+      Some(Box::new(Statement::Return(Expression::Id("y".to_owned())))),
     )),
     Statement::VariableDeclaration(
       "result".to_owned(),
-      Expression::conditional(
-        Expression::infix(
-          ">",
-          Expression::Id("x".to_owned()),
-          Expression::Id("y".to_owned()),
-        ),
-        Statement::Expression(Expression::Id("x".to_owned())),
-        Some(Statement::Expression(Expression::Id("y".to_owned()))),
+      Expression::Conditional(
+        Box::new(Expression::Infix(
+          ">".to_owned(),
+          Box::new(Expression::Id("x".to_owned())),
+          Box::new(Expression::Id("y".to_owned())),
+        )),
+        Box::new(Statement::Expression(Expression::Id("x".to_owned()))),
+        Some(Box::new(Statement::Expression(Expression::Id(
+          "y".to_owned(),
+        )))),
       ),
     ),
   ];
@@ -427,29 +468,33 @@ fn if_block() {
     let result = if (x > y) { x } else { y }";
 
   let expected = vec![
-    Statement::Expression(Expression::conditional(
-      Expression::infix(
-        ">",
-        Expression::Id("x".to_owned()),
-        Expression::Id("y".to_owned()),
-      ),
-      Statement::Block(vec![Statement::Return(Expression::Id("x".to_owned()))]),
-      Some(Statement::Block(vec![Statement::Return(Expression::Id(
-        "y".to_owned(),
+    Statement::Expression(Expression::Conditional(
+      Box::new(Expression::Infix(
+        ">".to_owned(),
+        Box::new(Expression::Id("x".to_owned())),
+        Box::new(Expression::Id("y".to_owned())),
+      )),
+      Box::new(Statement::Block(vec![Statement::Return(Expression::Id(
+        "x".to_owned(),
       ))])),
+      Some(Box::new(Statement::Block(vec![Statement::Return(
+        Expression::Id("y".to_owned()),
+      )]))),
     )),
     Statement::VariableDeclaration(
       "result".to_owned(),
-      Expression::conditional(
-        Expression::infix(
-          ">",
+      Expression::Conditional(
+        Box::new(Expression::Infix(
+          ">".to_owned(),
+          Box::new(Expression::Id("x".to_owned())),
+          Box::new(Expression::Id("y".to_owned())),
+        )),
+        Box::new(Statement::Block(vec![Statement::Expression(
           Expression::Id("x".to_owned()),
-          Expression::Id("y".to_owned()),
-        ),
-        Statement::Block(vec![Statement::Expression(Expression::Id("x".to_owned()))]),
-        Some(Statement::Block(vec![Statement::Expression(
-          Expression::Id("y".to_owned()),
         )])),
+        Some(Box::new(Statement::Block(vec![Statement::Expression(
+          Expression::Id("y".to_owned()),
+        )]))),
       ),
     ),
   ];
@@ -470,10 +515,10 @@ fn boolean_expressions() {
     let barfoo = false;";
 
   let expected = vec![
-    Statement::Expression(Expression::TRUE),
-    Statement::Expression(Expression::FALSE),
-    Statement::VariableDeclaration("foobar".to_owned(), Expression::TRUE),
-    Statement::VariableDeclaration("barfoo".to_owned(), Expression::FALSE),
+    Statement::Expression(Expression::True),
+    Statement::Expression(Expression::False),
+    Statement::VariableDeclaration("foobar".to_owned(), Expression::True),
+    Statement::VariableDeclaration("barfoo".to_owned(), Expression::False),
   ];
   compare(parse(input), expected)
 }
@@ -508,7 +553,7 @@ fn precedence() {
 }
 
 fn parse(input: &str) -> Vec<Statement> {
-  let mut parser = Parser::new(lex(input));
+  let mut parser = Parser::new(Token::lexer(input));
   let program = parser.parse();
 
   for err in parser.errors {

@@ -1,0 +1,42 @@
+BLOCK -> STATEMENT { T STATEMENT }
+T -> ";" | "\n"
+
+STATEMENT -> "{" BLOCK "}"
+  | "let" IDENTIFIER = EXPRESSION
+  | "return" EXPRESSION
+  | "while" EXPRESSION STATEMENT
+  | "for" IDENTIFIER "in" EXPRESSION STATEMENT
+  | EXPRESSION
+
+EXPRESSION -> IDENTIFIER
+  | INTEGER
+  | STRING
+  | FUNCTION
+  | FUNCTION_CALL
+  | PREFIX EXPRESSION
+  | EXPRESSION INFIX EXPRESSION
+  | ARRAY
+  | HASH
+  | INDEX
+  | ASSIGNMENT
+  | INDEX_ASSIGNMENT
+  | BOOLEAN
+  | NULL
+
+INTEGER -> /[0-9]+/
+STRING -> '"' {any_char} '"'
+  | "'" {any_char} "'"
+
+FUNCTION -> "fn" [IDENTIFIER] "(" [ARGS] ")" STATEMENT
+FUNCTION_CALL -> IDENTIFIER "("[ARG_VALUES] ")"
+  | FUNCTION "(" [ARG_VALUES] ")"
+
+PREFIX -> "!" | "-"
+INFIX -> "+" | "-" | "*" | "/" | "==" | "!=" | ">=" | "<=" | ">" | "<"
+ARRAY -> "[" [EXPRESSION {"," EXPRESSION}] "]"
+HASH -> "{" [STRING ":" EXPRESSION {"," STRING ":" EXPRESSION}] "}"
+INDEX -> EXPRESSION "[" EXPRESSION "]"
+ASSIGNMENT -> IDENTIFIER "=" EXPRESSION
+INDEX_ASSIGNMENT -> INDEX "=" EXPRESSION
+BOOLEAN -> "true" | "false"
+NULL -> "null"
